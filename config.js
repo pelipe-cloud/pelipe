@@ -12,7 +12,7 @@ window.CONFIG = {
   // --- Publicación de películas ---
   // Administradores: gestionan todo el catálogo y deciden quién más puede publicar (panel "Publicar → Equipo").
   // Deben coincidir con el correo de las reglas de Firestore (ver README).
-  ADMIN_EMAILS: [],            // ej. ["pelipedesoporte@gmail.com"]
+  ADMIN_EMAILS: [pelipedesoporte@gmail.com],            // ej. ["pelipedesoporte@gmail.com"]
   // Dirección pública del sitio, sin barra final (ej. "https://pelipepelipe-cloud.github.io/pelipe" o tu dominio propio).
   // Sirve para sitemap.xml, enlaces canónicos y vistas previas. En GitHub Actions se deduce sola si la dejas vacía.
   SITE_URL: "pelipe-cloud.github.io/pelipe",
