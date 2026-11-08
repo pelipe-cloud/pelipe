@@ -1230,7 +1230,7 @@ import { Cloud } from './auth.js';
   /* ---------- arranque ---------- */
   const legal = [];
   if (hasTmdb()) legal.push('Los datos de ayuda al publicar provienen de TMDB. Este producto usa la API de TMDB pero no está respaldado ni certificado por TMDB.');
-  if (C.CONTACT_EMAIL) legal.push(`Duda, queja o petición? Escribenos... <a href="mailto:${esc(C.CONTACT_EMAIL)}"><u>${esc(C.CONTACT_EMAIL)}</u></a>.`);
+  if (C.CONTACT_EMAIL) legal.push(`Duda, o quieres anunciar? Escribenos... <a href="mailto:${esc(C.CONTACT_EMAIL)}"><u>${esc(C.CONTACT_EMAIL)}</u></a>.`);
   document.getElementById('legal').innerHTML = legal.join('<br>');
 
   /* ---------- instalar como app ---------- */
