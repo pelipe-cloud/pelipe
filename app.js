@@ -219,13 +219,35 @@ import { Cloud } from './auth.js';
       const m = u.pathname.match(/^\/(?:details|embed)\/([^/?#]+)/);
       if (m) return { tipo: 'archive', id: m[1] };
     }
+    // Otras plataformas de video con reproductor para incrustar (se convierte el enlace normal al de incrustación)
+    const emb = src => ({ tipo: 'embed', src, host: new URL(src).hostname });
+    let m;
+    if (h === 'dailymotion.com' || h === 'dai.ly') {
+      m = h === 'dai.ly' ? u.pathname.match(/^\/([a-z0-9]+)/i) : u.pathname.match(/^\/(?:embed\/)?video\/([a-z0-9]+)/i);
+      if (m) return emb(`https://www.dailymotion.com/embed/video/${m[1]}`);
+    }
+    if (h === 'drive.google.com' && (m = u.pathname.match(/^\/file\/d\/([\w-]+)/))) return emb(`https://drive.google.com/file/d/${m[1]}/preview`);
+    if (h === 'streamable.com' && (m = u.pathname.match(/^\/(?:e\/)?([a-z0-9]+)$/i))) return emb(`https://streamable.com/e/${m[1]}`);
+    if (h === 'rumble.com' && (m = u.pathname.match(/^\/embed\/(v[a-z0-9]+)/i))) return emb(`https://rumble.com/embed/${m[1]}/`);
+    if (h === 'odysee.com') {
+      m = u.pathname.match(/^\/\$\/embed\/([\w%.-]+)\/([a-f0-9]+)/i);
+      if (!m) { const k = (u.pathname.split('/').filter(Boolean).pop() || '').match(/^([\w%.-]+):([a-f0-9]+)$/i); if (k) m = [0, k[1], k[2]]; }
+      if (m) return emb(`https://odysee.com/$/embed/${m[1]}/${m[2]}`);
+    }
+    if (h === 'iframe.mediadelivery.net' && (m = u.pathname.match(/^\/(?:embed|play)\/(\d+)\/([\w-]+)/))) return emb(`https://iframe.mediadelivery.net/embed/${m[1]}/${m[2]}`);
+    if (h === 'iframe.videodelivery.net' && (m = u.pathname.match(/^\/([a-f0-9]{32})/i))) return emb(`https://iframe.videodelivery.net/${m[1]}`);
+    if (/^[a-z0-9-]+\.cloudflarestream\.com$/.test(h) && (m = u.pathname.match(/^\/([a-f0-9]{32})\/(?:iframe|watch)/i))) return emb(`https://${h}/${m[1]}/iframe`);
     if (/\.m3u8$/i.test(u.pathname)) return { tipo: 'hls', url: u.href };
     if (/\.(mp4|webm|ogv|m4v)$/i.test(u.pathname)) return { tipo: 'file', url: u.href };
+    // Sitios que tú autorizas expresamente en config.js (EMBED_HOSTS): se incrustan con permisos reducidos (sandbox)
+    const extra = (C.EMBED_HOSTS || []).map(x => String(x).toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[/?#].*$/, '')).filter(Boolean);
+    if (extra.some(x => h === x || h.endsWith('.' + x))) return { tipo: 'embed', src: u.href, host: h, sandbox: true };
     return null;
   }
   function playerHtml(s, poster) {
     if (!s) return '<p class="empty">El enlace de este video no es válido.</p>';
-    const frame = u => `<div class="player"><iframe src="${esc(u)}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" title="Reproductor"></iframe></div>`;
+    const frame = (u, sb) => `<div class="player"><iframe src="${esc(u)}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen ${sb ? 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"' : ''} referrerpolicy="strict-origin-when-cross-origin" title="Reproductor"></iframe></div>`;
+    if (s.tipo === 'embed') return frame(s.src, s.sandbox);
     if (s.tipo === 'youtube') return frame(`https://www.youtube-nocookie.com/embed/${s.id}?rel=0`);
     if (s.tipo === 'vimeo') return frame(`https://player.vimeo.com/video/${s.id}${s.hash ? '?h=' + s.hash : ''}`);
     if (s.tipo === 'archive') return frame(`https://archive.org/embed/${encodeURIComponent(s.id)}`);
@@ -911,6 +933,8 @@ import { Cloud } from './auth.js';
       return { poster: b + 'hqdefault.jpg', fondo: b + ((await ok(b + 'maxresdefault.jpg')) ? 'maxresdefault.jpg' : 'hqdefault.jpg') };
     }
     if (s.tipo === 'archive') return { poster: `https://archive.org/services/img/${encodeURIComponent(s.id)}` };
+    const dm = s.tipo === 'embed' && s.src.match(/dailymotion\.com\/embed\/video\/([a-z0-9]+)/i);
+    if (dm) { const t = `https://www.dailymotion.com/thumbnail/video/${dm[1]}`; return { poster: t, fondo: t }; }
     return {};
   }
 
@@ -975,7 +999,7 @@ import { Cloud } from './auth.js';
           <label>Calidad<select name="calidad"><option value="">Sin especificar</option>${CALIDADES.map(c => `<option ${cur?.calidad === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
         </div>
         <label>Sinopsis<textarea name="sinopsis" rows="4" maxlength="1500">${v('sinopsis')}</textarea></label>
-        <label>Enlace del video * <small class="muted">YouTube, Vimeo, Internet Archive, .mp4/.webm o .m3u8 (https)</small><input name="url" type="url" required value="${v('url')}"></label>
+        <label>Enlace del video * <small class="muted">YouTube, Vimeo, Dailymotion, Google Drive, Streamable, Odysee, Rumble, Bunny, Cloudflare, Internet Archive, .mp4/.webm/.m3u8 o un sitio autorizado en config.js (https)</small><input name="url" type="url" required value="${v('url')}"></label>
         <p class="muted" id="srcinfo"></p>
         <label>Subtítulos <small class="muted">opcional; uno por línea: Idioma | enlace al .srt o .vtt (https, o ruta dentro de tu sitio como subs/es.srt). La persona decide si los activa.</small><textarea name="subtitulos" rows="3" placeholder="Español | subs/mi-pelicula-es.srt">${esc(linesOf(cur?.subtitulos))}</textarea></label>
         <label>Otros audios <small class="muted">opcional; uno por línea: Nombre | enlace al video completo con ese audio (.mp4, .webm o .m3u8). El video de arriba es el audio principal.</small><textarea name="versiones" rows="3" placeholder="Inglés original | https://…/mi-pelicula-en.mp4">${esc(linesOf(cur?.versiones))}</textarea></label>
@@ -1015,7 +1039,7 @@ import { Cloud } from './auth.js';
     const upd = () => {
       const val = f.elements.url.value.trim();
       const s = val ? parseSource(val) : null;
-      info.textContent = !val ? '' : s ? '✓ Detectado: ' + NOMBRES[s.tipo] : '✗ Enlace no reconocido. Debe ser https y de un proveedor compatible.';
+      info.textContent = !val ? '' : s ? '✓ Detectado: ' + (s.tipo === 'embed' ? 'reproductor de ' + s.host : NOMBRES[s.tipo]) : '✗ Enlace no reconocido. Debe ser https y de un sitio compatible o autorizado en config.js (EMBED_HOSTS).';
     };
     f.elements.url.addEventListener('input', upd);
     upd();
@@ -1036,7 +1060,7 @@ import { Cloud } from './auth.js';
       e.preventDefault();
       const g = n => f.elements[n].value.trim();
       const modo = f.elements.modo.value, bor = modo === 'borrador';
-      if ((!bor || g('url')) && !parseSource(g('url'))) return toast('El enlace del video no es válido.');
+      if ((!bor || g('url')) && !parseSource(g('url'))) return toast('Enlace no compatible. Usa YouTube, Vimeo, Dailymotion, Google Drive, Streamable, Odysee, Rumble, Bunny, Cloudflare Stream, Internet Archive, un .mp4/.webm/.m3u8, o autoriza tu sitio en config.js (EMBED_HOSTS).');
       if (!bor && !g('licencia')) return toast('Elige la licencia.');
       let when = 0;
       if (modo === 'programar') { when = new Date(g('cuando')).getTime(); if (!(when > Date.now() + 60000)) return toast('Elige una fecha y hora futuras para programar.'); }
