@@ -393,3 +393,34 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:fle
 .card .pl svg{width:22px;height:22px;fill:#fff;margin-left:-3px}
 .card:hover .pl{transform:scale(1.12);background:var(--acc);border-color:var(--acc)}
 .scroller .card .pl,.rm .pl{width:40px;height:40px;margin:-20px 0 0 -20px}
+
+/* ===== PC: cabecera con más aire entre logo, menú y buscador ===== */
+@media (min-width:721px){
+  #nav{flex:0 0 auto;overflow:visible}
+  .searchbox{flex:1 1 auto;min-width:200px;max-width:520px;margin-left:auto}
+}
+@media (min-width:1500px){
+  .top{gap:24px}
+  #nav{gap:8px}
+  #nav a{padding:7px 12px;gap:8px}
+}
+@media (min-width:1800px){
+  .top{gap:34px}
+  #nav{gap:10px}
+  #nav a{padding:8px 16px}
+}
+/* pantallas de portátil pequeño / tablet: el menú baja a una segunda línea */
+@media (min-width:721px) and (max-width:1259px){
+  .top{flex-wrap:wrap;gap:10px 14px}
+  .logo{order:1}
+  #acct{order:2;margin-left:auto}
+  .searchbox{order:3;flex:1 0 100%;max-width:none;margin-left:0}
+  #nav{order:4;flex:1 0 100%;overflow-x:auto}
+  .surprise span{display:inline}
+}
+@media (min-width:1260px) and (max-width:1439px){
+  .top{gap:12px}
+  #nav{gap:2px}
+  #nav a{padding:6px 7px;gap:5px}
+  .logo{font-size:2.3rem}
+}
