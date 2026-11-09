@@ -39,7 +39,7 @@ import { Cloud } from './auth.js';
   const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
   const blank = () => ({ favoritos: [], progreso: [], listas: [{ id: 'ver-despues', nombre: 'Ver más tarde', items: [] }] });
-  const mini = p => ({ id: p.id, titulo: p.titulo || '', poster: p.poster || '', anio: p.anio || '', calidad: p.calidad || '', generos: p.generos || '' });
+  const mini = p => ({ id: p.id, titulo: p.titulo || '', poster: p.poster || '', anio: p.anio || '', calidad: p.calidad || '', calidades: Array.isArray(p.calidades) ? p.calidades : [], generos: p.generos || '' });
   function normalize(d) {
     const b = blank();
     if (!d || typeof d !== 'object') return b;
@@ -138,7 +138,30 @@ import { Cloud } from './auth.js';
   /* ---------- catálogo ---------- */
   const LICENCIAS = { propia: 'Obra propia', publico: 'Dominio público', cc: 'Creative Commons', permiso: 'Con permiso del titular' };
   const REPORTES = { no_carga: 'El video no carga', se_traba: 'Se corta, se traba o va lento', sin_audio: 'No se escucha / sin audio', audio_mal: 'Audio incorrecto o desfasado', subs_mal: 'Subtítulos mal, desfasados o no aparecen', imagen: 'Mala calidad de imagen', otro: 'Otro problema con la película' };
-  const CALIDADES = ['4K', '1440p', '1080p', '720p', '480p', '360p'];
+  const CALIDADES = ['4K', '1080p']; // solo estas dos se pueden elegir al publicar
+  const QORD = ['4K', '1080p'];
+  const IDIOMAS = { lat: 'Latino (México)', en: 'English', ensub: 'English (sub. español)' };
+  const qRank = q => { const i = QORD.indexOf(q); return i < 0 ? 9 : i; };
+  // Calidades de una película, de mayor a menor (las películas antiguas con una sola "calidad" siguen funcionando)
+  const qualsOf = p => [...new Set(Array.isArray(p.calidades) && p.calidades.length ? p.calidades : p.calidad ? [p.calidad] : [])].sort((a, b) => qRank(a) - qRank(b));
+  // Servidores de video: por calidad (4K primero) y con su idioma. Sin servidores guardados, se usa el enlace único de siempre.
+  function serversOf(p) {
+    const has = Array.isArray(p.servidores) && p.servidores.some(x => x && x.u);
+    const raw = has ? p.servidores.filter(x => x && x.u) : p.url ? [{ q: p.calidad === '4K' ? '4K' : '1080p', i: '', n: '', u: p.url }] : [];
+    return raw.map((x, k) => ({ q: x.q === '4K' ? '4K' : '1080p', i: IDIOMAS[x.i] ? x.i : '', n: String(x.n || ''), u: x.u, k })).sort((a, b) => qRank(a.q) - qRank(b.q) || a.k - b.k);
+  }
+  // Banderas en SVG (los emojis de bandera no se ven en Windows)
+  const FLAGS = (() => {
+    const dots = []; for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) dots.push(`<circle cx="${1.8 + x * 2.2}" cy="${1.5 + y * 1.8}" r=".45"/>`);
+    const stripes = [0, 2.46, 4.92, 7.38, 9.85, 12.31, 14.77].map(y => `<rect y="${y}" width="24" height="1.23" fill="#b22234"/>`).join('');
+    return {
+      en: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="English"><rect width="24" height="16" fill="#fff"/>${stripes}<rect width="10.4" height="8.6" fill="#3c3b6e"/><g fill="#fff">${dots.join('')}</g></svg>`,
+      lat: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="México"><rect width="8" height="16" fill="#006847"/><rect x="8" width="8" height="16" fill="#fff"/><rect x="16" width="8" height="16" fill="#ce1126"/><circle cx="12" cy="8" r="2.1" fill="#9b7a3a" opacity=".85"/></svg>`
+    };
+  })();
+  FLAGS.ensub = FLAGS.en;
+  const flagOf = i => FLAGS[i] || '';
+  const qBadges = (p, cls = 'badge q') => qualsOf(p).map(q => `<span class="${cls}">${esc(q)}</span>`).join('');
   let cat = null, catT = 0, catS = '';
   const visible = p => !p.publicarEn || p.publicarEn <= Date.now(); // programadas: ocultas hasta su hora
   async function catalog(force) { return (await catalogRaw(force)).filter(visible); }
@@ -179,7 +202,7 @@ import { Cloud } from './auth.js';
   const needCloud = () => '<div class="notice"><h2>Falta activar la nube</h2><p>Las películas se guardan en Firebase. Configura <code>FIREBASE</code> en <code>config.js</code> (pasos en el README).</p></div>';
   const failCloud = e => { app.innerHTML = `<div class="notice"><h2>No se pudo cargar el catálogo</h2><p>${esc(e.code || e.message)}</p></div>`; };
 
-  const cardLocal = p => `<a class="card" href="#/ver/${encodeURIComponent(p.id)}"><div class="poster">${httpsUrl(p.poster) ? `<img loading="lazy" src="${esc(p.poster)}" alt="${esc(p.titulo)}">` : ''}${gensOf(p)[0] ? `<div class="badge">${esc(cap(gensOf(p)[0]))}</div>` : ''}${p.calidad ? `<div class="badge q">${esc(p.calidad)}</div>` : ''}${p.pct ? `<div class="prog"><i style="width:${Math.max(4, Math.min(100, Math.round(p.pct)))}%"></i></div>` : ''}${p.rank ? `<div class="rank">${p.rank}</div>` : ''}</div><b>${esc(p.titulo)}</b><span>${esc(p.anio || '')}${p.votos ? ` · ♥ ${p.votos}` : ''}</span></a>`;
+  const cardLocal = p => `<a class="card" href="#/ver/${encodeURIComponent(p.id)}"><div class="poster">${httpsUrl(p.poster) ? `<img loading="lazy" src="${esc(p.poster)}" alt="${esc(p.titulo)}">` : ''}${gensOf(p)[0] ? `<div class="badge">${esc(cap(gensOf(p)[0]))}</div>` : ''}${qualsOf(p).length ? `<div class="qs">${qBadges(p)}</div>` : ''}${p.pct ? `<div class="prog"><i style="width:${Math.max(4, Math.min(100, Math.round(p.pct)))}%"></i></div>` : ''}${p.rank ? `<div class="rank">${p.rank}</div>` : ''}</div><b>${esc(p.titulo)}</b><span>${esc(p.anio || '')}${p.votos ? ` · ♥ ${p.votos}` : ''}</span></a>`;
   const rowLocal = (title, items, link) => items.length ? `<section class="row"><div class="row-h"><h2>${esc(title)}</h2>${link ? `<a href="${link}">Ver todo →</a>` : ''}</div><div class="scroller">${items.map(cardLocal).join('')}</div></section>` : '';
   const gridLocal = items => `<div class="grid">${items.map(cardLocal).join('')}</div>`;
   const gridRm = (items, attrs) => `<div class="grid">${items.map(p => `<div class="rm-wrap">${cardLocal(p)}<button class="rm" data-id="${esc(p.id)}" ${attrs}>Quitar</button></div>`).join('')}</div>`;
@@ -246,7 +269,7 @@ import { Cloud } from './auth.js';
   }
   function playerHtml(s, poster) {
     if (!s) return '<p class="empty">El enlace de este video no es válido.</p>';
-    const frame = (u, sb) => `<div class="player"><iframe src="${esc(u)}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen ${sb ? 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"' : ''} referrerpolicy="strict-origin-when-cross-origin" title="Reproductor"></iframe></div>`;
+    const frame = (u, sb) => `<div class="player${/^https:\/\/drive\.google\.com\//.test(u) ? ' tall' : ''}"><iframe src="${esc(u)}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen ${sb ? 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"' : ''} referrerpolicy="strict-origin-when-cross-origin" title="Reproductor"></iframe></div>`;
     if (s.tipo === 'embed') return frame(s.src, s.sandbox);
     if (s.tipo === 'youtube') return frame(`https://www.youtube-nocookie.com/embed/${s.id}?rel=0`);
     if (s.tipo === 'vimeo') return frame(`https://player.vimeo.com/video/${s.id}${s.hash ? '?h=' + s.hash : ''}`);
@@ -330,6 +353,7 @@ import { Cloud } from './auth.js';
     const v = root.querySelector('video');
     if (!v) return;
     const st = { hls: null };
+    v._st = st; // para poder detener HLS al cambiar de servidor
     const main = p ? parseSource(p.url) : (v.dataset.hls ? { tipo: 'hls', url: v.dataset.hls } : null);
     const bar = root.querySelector('#pbar');
     const ui = { subs: [], audios: [], sub: -1, aud: 0 };
@@ -386,7 +410,12 @@ import { Cloud } from './auth.js';
     }
 
     // Retomar donde se quedó
-    const saved = p && opts.track !== false && progOf(p.id);
+    // Al cambiar de calidad/servidor se sigue desde el mismo minuto (opts.startAt) en lugar del guardado
+    if (opts.startAt > 0) {
+      const go = () => { try { v.currentTime = opts.startAt; } catch { } if (opts.keepPlaying) v.play().catch(() => { }); };
+      if (v.readyState >= 1) go(); else v.addEventListener('loadedmetadata', go, { once: true });
+    }
+    const saved = !(opts.startAt > 0) && p && opts.track !== false && progOf(p.id);
     if (saved && saved.t > 15) {
       const go = () => {
         if (!isFinite(v.duration) || saved.t >= v.duration - 45) return;
@@ -465,7 +494,7 @@ import { Cloud } from './auth.js';
           <div class="hero-in">
             <span class="tag">${i === 0 ? 'Lo más nuevo' : 'Recién publicada'}</span>
             <h1>${esc(f.titulo)}</h1>
-            <div class="meta-line"><span>${esc(f.anio || '')}</span>${f.duracion ? `<span>${esc(fmtDur(f.duracion))}</span>` : ''}${f.calidad ? `<span class="chip q">${esc(f.calidad)}</span>` : ''}${gensOf(f)[0] ? `<span class="chip">${esc(cap(gensOf(f)[0]))}</span>` : ''}</div>
+            <div class="meta-line"><span>${esc(f.anio || '')}</span>${f.duracion ? `<span>${esc(fmtDur(f.duracion))}</span>` : ''}${qBadges(f, 'chip q')}${gensOf(f)[0] ? `<span class="chip">${esc(cap(gensOf(f)[0]))}</span>` : ''}</div>
             <p>${esc(f.sinopsis || '')}</p>
             <div class="actions">
               <a class="btn" href="#/ver/${encodeURIComponent(f.id)}">▶ Ver película</a>
@@ -536,7 +565,7 @@ import { Cloud } from './auth.js';
       (!p.genero || gensOf(x).some(g => norm(g) === norm(p.genero))) &&
       (!p.anio || String(x.anio) === p.anio) &&
       (!p.hasta || (Number(x.anio) > 0 && Number(x.anio) <= Number(p.hasta))) &&
-      (!p.calidad || x.calidad === p.calidad));
+      (!p.calidad || qualsOf(x).includes(p.calidad)));
     if (orden === 'az') items.sort((a, b) => a.titulo.localeCompare(b.titulo, 'es'));
     else if (orden === 'anio') items.sort((a, b) => (Number(b.anio) || 0) - (Number(a.anio) || 0));
     const titulo = p.q ? `Resultados para “${esc(p.q)}”` : p.genero ? esc(cap(p.genero)) : p.hasta ? `Clásicos (hasta ${esc(p.hasta)})` : 'Películas';
@@ -593,7 +622,7 @@ import { Cloud } from './auth.js';
     if (!l.length) { app.innerHTML = '<div class="wrap"><h1 style="margin-bottom:16px">Próximas</h1><p class="empty">Aún no hay estrenos cargados. Vuelve pronto.</p></div>'; return; }
     app.innerHTML = `<div class="wrap">
       <h1 style="margin-bottom:6px">Próximas</h1>
-      <p class="muted" style="max-width:70ch;margin-bottom:16px">Los estrenos más populares que se acercan, en cines y plataformas. Aquí no se reproducen: es solo información.</p>
+      <p class="muted" style="max-width:70ch;margin-bottom:16px">Los estrenos más populares que se acercan, en cines y plataformas. Aún no están disponibles para ver en Pelipe.pm: es solo información.</p>
       <form class="filters"><select id="po"><option value="pop">Más populares</option><option value="fecha">Fecha de estreno</option></select></form>
       <div class="grid" id="pg"></div>
       <p class="muted" style="font-size:.8rem;margin-top:26px">Datos e imágenes: TMDB. Este producto usa la API de TMDB pero no está respaldado ni certificado por TMDB.</p></div>`;
@@ -606,7 +635,7 @@ import { Cloud } from './auth.js';
       e.preventDefault();
       const x = cur[Number(a.dataset.i)]; if (!x) return;
       const tr = /^[\w-]{6,20}$/.test(x.trailer || '') ? `https://www.youtube.com/watch?v=${x.trailer}` : '';
-      openModal(`<div class="proximo"><h2>${esc(x.titulo)}</h2><p class="muted">${esc(fdate(x, true))} · ${esc(when(x))}${x.generos ? ' · ' + esc(x.generos) : ''}</p><p style="margin:12px 0">${esc(x.sinopsis || 'Sin sinopsis disponible.')}</p>${tr ? '<button class="btn" id="ptr" type="button">▶ Ver tráiler</button>' : ''}<p class="muted" style="font-size:.8rem;margin-top:12px">Solo información: esta película no se reproduce en Pelipe.pm.</p></div>`);
+      openModal(`<div class="proximo"><h2>${esc(x.titulo)}</h2><p class="muted">${esc(fdate(x, true))} · ${esc(when(x))}${x.generos ? ' · ' + esc(x.generos) : ''}</p><p style="margin:12px 0">${esc(x.sinopsis || 'Sin sinopsis disponible.')}</p>${tr ? '<button class="btn" id="ptr" type="button">▶ Ver tráiler</button>' : ''}<p class="muted" style="font-size:.8rem;margin-top:12px">Solo información: esta película aún no está disponible para ver en Pelipe.pm.</p></div>`);
       const b = document.getElementById('ptr'); if (b) b.onclick = () => openTrailer(tr);
     });
   }
@@ -736,7 +765,7 @@ import { Cloud } from './auth.js';
     };
   }
 
-  function reportDialog(p) {
+  function reportDialog(p, srvLabel = '') {
     openModal(`<div class="panel">
       <h2>Reportar un problema</h2>
       <p class="muted" style="margin-top:6px">¿Qué pasa con “${esc(p.titulo)}”?</p>
@@ -753,7 +782,7 @@ import { Cloud } from './auth.js';
       btn.disabled = true;
       const v = app.querySelector('video');
       const src = parseSource(p.url);
-      const d = { peli: String(p.id), titulo: String(p.titulo || '').slice(0, 120), tipo: f.elements.tipo.value, detalle: f.elements.detalle.value.trim().slice(0, 500), por: p.por || '', ua: navigator.userAgent.slice(0, 150), seg: v && isFinite(v.currentTime) ? Math.floor(v.currentTime) : 0, fuente: src ? src.tipo : '' };
+      const d = { peli: String(p.id), titulo: String(p.titulo || '').slice(0, 120), tipo: f.elements.tipo.value, detalle: ((srvLabel ? `[${srvLabel}] ` : '') + f.elements.detalle.value.trim()).slice(0, 500), por: p.por || '', ua: navigator.userAgent.slice(0, 150), seg: v && isFinite(v.currentTime) ? Math.floor(v.currentTime) : 0, fuente: src ? src.tipo : '' };
       try {
         const uid = await Cloud.ensureUid();
         await Cloud.sendReporte(d.peli + '_' + uid, { ...d, uid });
@@ -801,22 +830,32 @@ import { Cloud } from './auth.js';
       const favLabel = () => isFav(p.id) ? '♥ En favoritas' : '♡ Favorita';
       let similar = [];
       try { similar = (await catalog()).filter(x => x.id !== p.id && gensOf(x).some(g => gens.some(h => norm(h) === norm(g)))).slice(0, 12); } catch { }
-      app.innerHTML = `<div class="wrap">
-        <p><a href="#/catalogo" class="muted">← Películas</a></p>
-        <h1 style="margin:8px 0 14px">${esc(p.titulo)} ${p.anio ? `<small class="muted" style="font-weight:400">(${esc(p.anio)})</small>` : ''}</h1>
+      const srvs = serversOf(p);
+      const first = srvs[0] ? srvs[0].u : p.url;
+      let curSrv = 0;
+      const quals = qualsOf(p);
+      // Opciones bajo el video: calidad mayor (4K) → menor (1080p), cada una con la bandera de su idioma
+      const srvPanel = srvs.length > 1 || srvs.some(s => s.i) ? `<div class="servers" id="servers" role="group" aria-label="Calidad y servidor">
+          <p class="servers-h">Elige calidad y servidor</p>
+          ${QORD.filter(q => srvs.some(s => s.q === q)).map(q => `<div class="srv-group"><span class="srv-q">${esc(q)}</span><div class="srv-btns">${srvs.map((s, idx) => ({ s, idx })).filter(x => x.s.q === q).map(({ s, idx }, n) => `<button type="button" class="srv ${idx === 0 ? 'on' : ''}" data-k="${idx}" aria-label="${esc(q + ' ' + (IDIOMAS[s.i] || '') + ' ' + (s.n || 'Servidor ' + (n + 1)))}">${flagOf(s.i)}<span class="srv-t"><b>${esc(IDIOMAS[s.i] || 'Idioma original')}</b><small>${esc(s.n || 'Servidor ' + (n + 1))}</small></span></button>`).join('')}</div></div>`).join('')}
+        </div>` : '';
+      const srvLabel = () => { const s = srvs[curSrv]; return s ? [s.q, IDIOMAS[s.i], s.n].filter(Boolean).join(' · ') : ''; };
+      app.innerHTML = `<div class="theater"><div class="theater-in">
+        <p class="t-back"><a href="#/catalogo" class="muted">← Películas</a></p>
+        <h1 class="t-title">${esc(p.titulo)} ${p.anio ? `<small class="muted">(${esc(p.anio)})</small>` : ''}</h1>
         ${live ? '' : `<div class="notice slim"><p><b>Vista previa.</b> ${draft ? 'Este es un borrador: solo tú puedes verlo.' : 'Programada para el ' + esc(new Date(p.publicarEn).toLocaleString('es', { dateStyle: 'long', timeStyle: 'short' })) + '; hasta entonces solo tú puedes verla.'}</p></div>`}
-        ${playerHtml(parseSource(p.url), p.poster)}
+        ${playerHtml(parseSource(first), p.poster)}
         <div class="resume" id="resume" hidden></div>
         <div class="pbar" id="pbar" hidden></div>
+        ${srvPanel}
         ${live ? reactHtml() : ''}
         ${gens.length ? `<div class="chips">${gens.map(g => `<a class="chip" href="#/catalogo?genero=${encodeURIComponent(g)}">${esc(g)}</a>`).join('')}</div>` : ''}
         ${p.sinopsis ? `<p class="overview">${esc(p.sinopsis)}</p>` : ''}
         <dl class="ficha">${[
           ['Año', p.anio],
           ['Duración', fmtDur(p.duracion)],
-          ['Calidad', p.calidad],
+          ['Calidad', quals.join(' · ')],
           ['Calificación', Number(p.calificacion) > 0 ? '★ ' + Number(p.calificacion).toFixed(1) + ' / 10' : ''],
-          ['Licencia', LICENCIAS[p.licencia]],
           ['Subtítulos', (Array.isArray(p.subtitulos) ? p.subtitulos : []).map(s => s.n).join(', ')],
           ['Audio', Array.isArray(p.versiones) && p.versiones.length ? [(p.audioNombre || '').trim() || 'Original', ...p.versiones.map(x => x.n)].join(', ') : ''],
           ['Créditos', p.creditos]
@@ -827,14 +866,34 @@ import { Cloud } from './auth.js';
           <button class="btn ghost" id="addlist">＋ Añadir a lista</button>` : ''}
           ${parseSource(p.trailer) ? '<button class="btn ghost" id="trailer">Ver tráiler</button>' : ''}
         </div>
-        <div style="margin-top:28px">${rowLocal('Más como esta', similar)}</div></div>`;
-      wireVideo(app, p, { track: live });
+      </div></div>
+        <div class="wrap">${rowLocal('Más como esta', similar)}</div>`;
+      wireVideo(app, { ...p, url: first }, { track: live });
+      // Cambiar de calidad/servidor: se sigue desde el mismo minuto
+      const playSrv = k => {
+        const s = srvs[k];
+        if (!s || k === curSrv) return;
+        const old = app.querySelector('.player video');
+        const t = old && isFinite(old.currentTime) ? old.currentTime : 0, was = !!old && !old.paused;
+        if (leave) { try { leave(); } catch { } leave = null; }
+        if (old) { if (old._st && old._st.hls) old._st.hls.destroy(); old.pause(); old.removeAttribute('src'); old.load(); }
+        const tmp = document.createElement('div');
+        tmp.innerHTML = playerHtml(parseSource(s.u), p.poster);
+        app.querySelector('.player').replaceWith(tmp.firstElementChild);
+        curSrv = k;
+        app.querySelectorAll('#servers .srv').forEach(b => b.classList.toggle('on', Number(b.dataset.k) === k));
+        const rs = document.getElementById('resume'), pb = document.getElementById('pbar');
+        rs.hidden = true; pb.hidden = true; pb.innerHTML = '';
+        wireVideo(app, { ...p, url: s.u }, { track: live, startAt: t, keepPlaying: was });
+      };
+      const sp = document.getElementById('servers');
+      if (sp) sp.addEventListener('click', e => { const b = e.target.closest('.srv'); if (b) playSrv(Number(b.dataset.k)); });
       if (live) {
         setupReactions(p.id);
         const fav = document.getElementById('fav');
         fav.onclick = () => { toggleFav(p); fav.classList.toggle('on', isFav(p.id)); fav.textContent = favLabel(); };
         document.getElementById('addlist').onclick = () => listPicker(p);
-        document.getElementById('report').onclick = () => reportDialog(p);
+        document.getElementById('report').onclick = () => reportDialog({ ...p, url: srvs[curSrv] ? srvs[curSrv].u : p.url }, srvLabel());
         document.getElementById('share').onclick = () => sharePage(p);
       }
       const tr = document.getElementById('trailer');
@@ -938,6 +997,9 @@ import { Cloud } from './auth.js';
     return {};
   }
 
+  // Una fila del formulario de servidores: calidad, idioma, nombre opcional y enlace
+  const srvRow = s => `<div class="srow"><div class="srow-top"><select class="sq" aria-label="Calidad">${QORD.map(q => `<option ${s.q === q ? 'selected' : ''}>${q}</option>`).join('')}</select><select class="si" aria-label="Idioma"><option value="lat" ${s.i === 'lat' ? 'selected' : ''}>Latino (México)</option><option value="en" ${s.i === 'en' ? 'selected' : ''}>English</option><option value="ensub" ${s.i === 'ensub' ? 'selected' : ''}>English (sub. español)</option><option value="" ${!s.i ? 'selected' : ''}>Sin indicar</option></select><input class="sn" maxlength="30" placeholder="Nombre (opcional)" value="${esc(s.n || '')}"><button type="button" class="btn ghost sm srow-rm" aria-label="Quitar este servidor" title="Quitar">✕</button></div><input class="su" type="url" placeholder="Enlace del video (https)" value="${esc(s.u || '')}"><p class="muted sinfo"></p></div>`;
+
   async function adminPage() {
     setNav('admin');
     if (!Cloud.enabled) { app.innerHTML = needCloud(); return; }
@@ -994,13 +1056,16 @@ import { Cloud } from './auth.js';
           <label>Duración (min)<input name="duracion" inputmode="numeric" maxlength="4" value="${v('duracion')}"></label>
           <label>Calificación (0–10)<input name="calificacion" inputmode="decimal" maxlength="4" value="${v('calificacion')}"></label>
         </div>
-        <div class="two">
-          <label>Género(s) <small class="muted">separados por coma; el primero es el que se ve en la tarjeta</small><input name="generos" maxlength="120" value="${v('generos')}"></label>
-          <label>Calidad<select name="calidad"><option value="">Sin especificar</option>${CALIDADES.map(c => `<option ${cur?.calidad === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
-        </div>
+        <label>Género(s) <small class="muted">separados por coma; el primero es el que se ve en la tarjeta</small><input name="generos" maxlength="120" value="${v('generos')}"></label>
+        <fieldset class="calfs"><legend>Calidades disponibles <small class="muted">marca todas las que tenga; se ven en la portada</small></legend>
+          ${CALIDADES.map(c => `<label class="chk"><input type="checkbox" name="cal" value="${c}" ${cur && qualsOf(cur).includes(c) ? 'checked' : ''}> <span>${c}</span></label>`).join('')}
+        </fieldset>
         <label>Sinopsis<textarea name="sinopsis" rows="4" maxlength="1500">${v('sinopsis')}</textarea></label>
-        <label>Enlace del video * <small class="muted">YouTube, Vimeo, Dailymotion, Google Drive, Streamable, Odysee, Rumble, Bunny, Cloudflare, Internet Archive, .mp4/.webm/.m3u8 o un sitio autorizado en config.js (https)</small><input name="url" type="url" required value="${v('url')}"></label>
-        <p class="muted" id="srcinfo"></p>
+        <fieldset class="srvs"><legend>Servidores de video *</legend>
+          <p class="muted" style="font-size:.84rem">Agrega uno o más servidores. Bajo el video se muestran de la mayor calidad (4K) a la menor (1080p), con la bandera del idioma. Enlaces: YouTube, Vimeo, Dailymotion, Google Drive, Streamable, Odysee, Rumble, Bunny, Cloudflare, Internet Archive, .mp4/.webm/.m3u8 o un sitio autorizado en config.js (https).</p>
+          <div id="srvlist">${(cur && serversOf(cur).length ? serversOf(cur) : [{ q: '1080p', i: 'lat', n: '', u: '' }]).map(srvRow).join('')}</div>
+          <button type="button" class="btn ghost sm" id="addsrv">＋ Agregar servidor</button>
+        </fieldset>
         <label>Subtítulos <small class="muted">opcional; uno por línea: Idioma | enlace al .srt o .vtt (https, o ruta dentro de tu sitio como subs/es.srt). La persona decide si los activa.</small><textarea name="subtitulos" rows="3" placeholder="Español | subs/mi-pelicula-es.srt">${esc(linesOf(cur?.subtitulos))}</textarea></label>
         <label>Otros audios <small class="muted">opcional; uno por línea: Nombre | enlace al video completo con ese audio (.mp4, .webm o .m3u8). El video de arriba es el audio principal.</small><textarea name="versiones" rows="3" placeholder="Inglés original | https://…/mi-pelicula-en.mp4">${esc(linesOf(cur?.versiones))}</textarea></label>
         <label>Nombre del audio principal <small class="muted">opcional; si lo dejas vacío se llama “Original”</small><input name="audioNombre" maxlength="40" placeholder="Español latino" value="${v('audioNombre')}"></label>
@@ -1034,21 +1099,34 @@ import { Cloud } from './auth.js';
     </div>`;
 
     const f = document.getElementById('pf');
-    const info = document.getElementById('srcinfo');
     const NOMBRES = { youtube: 'YouTube', vimeo: 'Vimeo', archive: 'Internet Archive', file: 'archivo de video', hls: 'streaming HLS' };
-    const upd = () => {
-      const val = f.elements.url.value.trim();
-      const s = val ? parseSource(val) : null;
-      info.textContent = !val ? '' : s ? '✓ Detectado: ' + (s.tipo === 'embed' ? 'reproductor de ' + s.host : NOMBRES[s.tipo]) : '✗ Enlace no reconocido. Debe ser https y de un sitio compatible o autorizado en config.js (EMBED_HOSTS).';
+    const list_ = document.getElementById('srvlist');
+    const updRow = row => {
+      const val = row.querySelector('.su').value.trim(), s = val ? parseSource(val) : null;
+      row.querySelector('.sinfo').textContent = !val ? '' : s ? '✓ Detectado: ' + (s.tipo === 'embed' ? 'reproductor de ' + s.host : NOMBRES[s.tipo]) : '✗ Enlace no reconocido. Debe ser https y de un sitio compatible o autorizado en config.js (EMBED_HOSTS).';
     };
-    f.elements.url.addEventListener('input', upd);
-    upd();
+    // Al elegir una calidad en un servidor, se marca también en "Calidades disponibles"
+    const syncCal = () => list_.querySelectorAll('.srow').forEach(r => { if (!r.querySelector('.su').value.trim()) return; const c = f.querySelector(`[name=cal][value="${r.querySelector('.sq').value}"]`); if (c) c.checked = true; });
+    list_.addEventListener('input', e => { const row = e.target.closest('.srow'); if (row) { updRow(row); syncCal(); } });
+    list_.addEventListener('change', e => { if (e.target.classList.contains('sq')) syncCal(); });
+    list_.addEventListener('click', e => {
+      const b = e.target.closest('.srow-rm'); if (!b) return;
+      const rows = list_.querySelectorAll('.srow');
+      if (rows.length > 1) b.closest('.srow').remove(); else { const r = rows[0]; r.querySelector('.su').value = ''; r.querySelector('.sn').value = ''; updRow(r); }
+    });
+    document.getElementById('addsrv').onclick = () => {
+      if (list_.querySelectorAll('.srow').length >= 12) return toast('Máximo 12 servidores por película.');
+      const last = list_.querySelector('.srow:last-child');
+      list_.insertAdjacentHTML('beforeend', srvRow({ q: last ? last.querySelector('.sq').value : '1080p', i: last ? last.querySelector('.si').value : 'lat', n: '', u: '' }));
+      list_.querySelector('.srow:last-child .su').focus();
+    };
+    list_.querySelectorAll('.srow').forEach(updRow);
     const set = (n, val) => { f.elements[n].value = val ?? ''; };
 
     // Modo de publicación: ahora / programada / borrador (el borrador puede quedar incompleto)
     const applyModo = () => {
       const m = f.elements.modo.value, bor = m === 'borrador';
-      for (const n of ['url', 'licencia', 'ok']) f.elements[n].required = !bor;
+      for (const n of ['licencia', 'ok']) f.elements[n].required = !bor;
       f.elements.cuando.required = m === 'programar';
       document.getElementById('cuandoBox').hidden = m !== 'programar';
       f.querySelector('.actions .btn').textContent = bor ? 'Guardar borrador' : m === 'programar' ? 'Programar' : curPub && modoIni === 'ahora' ? 'Guardar cambios' : 'Publicar';
@@ -1060,7 +1138,12 @@ import { Cloud } from './auth.js';
       e.preventDefault();
       const g = n => f.elements[n].value.trim();
       const modo = f.elements.modo.value, bor = modo === 'borrador';
-      if ((!bor || g('url')) && !parseSource(g('url'))) return toast('Enlace no compatible. Usa YouTube, Vimeo, Dailymotion, Google Drive, Streamable, Odysee, Rumble, Bunny, Cloudflare Stream, Internet Archive, un .mp4/.webm/.m3u8, o autoriza tu sitio en config.js (EMBED_HOSTS).');
+      const rows = [...list_.querySelectorAll('.srow')].map(r => ({ q: r.querySelector('.sq').value === '4K' ? '4K' : '1080p', i: r.querySelector('.si').value, n: r.querySelector('.sn').value.trim().slice(0, 30), u: r.querySelector('.su').value.trim() })).filter(x => x.u);
+      if (!bor && !rows.length) return toast('Agrega al menos un servidor con el enlace del video.');
+      if (rows.some(x => !parseSource(x.u))) return toast('Hay un enlace de video no compatible. Usa YouTube, Vimeo, Dailymotion, Google Drive, Streamable, Odysee, Rumble, Bunny, Cloudflare Stream, Internet Archive, un .mp4/.webm/.m3u8, o autoriza tu sitio en config.js (EMBED_HOSTS).');
+      const sorted = serversOf({ servidores: rows });
+      const mainUrl = sorted[0] ? sorted[0].u : '';
+      const calidades = CALIDADES.filter(c => f.querySelector(`[name=cal][value="${c}"]`).checked || rows.some(x => x.q === c));
       if (!bor && !g('licencia')) return toast('Elige la licencia.');
       let when = 0;
       if (modo === 'programar') { when = new Date(g('cuando')).getTime(); if (!(when > Date.now() + 60000)) return toast('Elige una fecha y hora futuras para programar.'); }
@@ -1077,11 +1160,11 @@ import { Cloud } from './auth.js';
       if (!g('poster') && !g('fondo')) {
         let t = hasTmdb() && g('titulo') ? await tmdbArt(g('titulo'), g('anio')) : null;
         if (t) toast(`Portada oficial tomada de TMDB: “${t.nombre}”. Si no es la película correcta, cámbiala editando.`);
-        else if (g('url')) { t = await autoThumb(g('url')); if (t.poster || t.fondo) toast('No se halló la portada oficial; se usó la miniatura del video.'); }
+        else if (mainUrl) { t = await autoThumb(mainUrl); if (t.poster || t.fondo) toast('No se halló la portada oficial; se usó la miniatura del video.'); }
         if (t && (t.poster || t.fondo)) { f.elements.poster.value = t.poster || ''; f.elements.fondo.value = t.fondo || ''; }
       }
       const id = editing || 'p' + Date.now().toString(36);
-      const d = { subtitulos: subs.ok, versiones: vers.ok, audioNombre: g('audioNombre'), calificacion: cal ? Number(Number(cal).toFixed(1)) : '', titulo: g('titulo'), anio: g('anio'), duracion: g('duracion'), generos: g('generos'), calidad: g('calidad'), sinopsis: g('sinopsis'), poster: g('poster'), fondo: g('fondo'), trailer: g('trailer'), url: g('url'), licencia: g('licencia'), creditos: g('creditos'), creado: modo === 'programar' ? when : (cur && (bor || (curPub && !(curPub.publicarEn > Date.now())))) ? (cur.creado || Date.now()) : Date.now(), publicarEn: when, actualizado: Date.now(), por: cur?.por || user.email };
+      const d = { subtitulos: subs.ok, versiones: vers.ok, audioNombre: g('audioNombre'), calificacion: cal ? Number(Number(cal).toFixed(1)) : '', titulo: g('titulo'), anio: g('anio'), duracion: g('duracion'), generos: g('generos'), calidad: calidades[0] || '', calidades, servidores: rows, sinopsis: g('sinopsis'), poster: g('poster'), fondo: g('fondo'), trailer: g('trailer'), url: mainUrl, licencia: g('licencia'), creditos: g('creditos'), creado: modo === 'programar' ? when : (cur && (bor || (curPub && !(curPub.publicarEn > Date.now())))) ? (cur.creado || Date.now()) : Date.now(), publicarEn: when, actualizado: Date.now(), por: cur?.por || user.email };
       try {
         if (bor) { await Cloud.saveBorrador(id, d); if (curPub) await Cloud.deletePelicula(id); }
         else { await Cloud.savePelicula(id, d); if (curDraft) await Cloud.deleteBorrador(id); }
@@ -1111,7 +1194,7 @@ import { Cloud } from './auth.js';
     }));
 
     // Copia de seguridad (descargar) y restauración (solo administrador)
-    const BK = ['titulo', 'anio', 'duracion', 'calificacion', 'generos', 'calidad', 'sinopsis', 'poster', 'fondo', 'trailer', 'url', 'licencia', 'creditos', 'creado', 'actualizado', 'por', 'subtitulos', 'versiones', 'audioNombre', 'publicarEn'];
+    const BK = ['titulo', 'anio', 'duracion', 'calificacion', 'generos', 'calidad', 'calidades', 'servidores', 'sinopsis', 'poster', 'fondo', 'trailer', 'url', 'licencia', 'creditos', 'creado', 'actualizado', 'por', 'subtitulos', 'versiones', 'audioNombre', 'publicarEn'];
     const pick = x => { const o = {}; for (const k of BK) if (x[k] !== undefined) o[k] = x[k]; return o; };
     const bkLast = () => { const t = Number(lsGet(LS_BK)); document.getElementById('bklast').textContent = t ? `Última copia: hace ${Math.max(0, Math.floor((Date.now() - t) / 864e5))} día(s).` : 'Aún no has descargado ninguna copia.'; };
     bkLast();
@@ -1301,23 +1384,66 @@ import { Cloud } from './auth.js';
   }
   window.addEventListener('hashchange', route);
 
-  let t;
-  document.getElementById('search').addEventListener('submit', e => {
-    e.preventDefault();
-    clearTimeout(t);
-    const q = e.currentTarget.q.value.trim();
-    if (q) location.hash = '#/catalogo?q=' + encodeURIComponent(q);
-  });
-  document.querySelector('#search input').addEventListener('input', e => {
-    clearTimeout(t);
-    const q = e.target.value.trim();
-    if (q.length > 2) t = setTimeout(() => { location.hash = '#/catalogo?q=' + encodeURIComponent(q); }, 600);
-  });
+  // Buscador con sugerencias del catálogo publicado (títulos que empiezan o contienen lo escrito)
+  {
+    const form = document.getElementById('search'), inp = form.q, box = document.getElementById('sugs');
+    let t, act = -1, items = [], seq = 0;
+    const close = () => { box.hidden = true; box.innerHTML = ''; inp.setAttribute('aria-expanded', 'false'); inp.removeAttribute('aria-activedescendant'); act = -1; items = []; };
+    const mark = i => {
+      act = i;
+      box.querySelectorAll('.sug').forEach((a, k) => { a.classList.toggle('on', k === i); a.setAttribute('aria-selected', k === i ? 'true' : 'false'); });
+      if (i >= 0) { inp.setAttribute('aria-activedescendant', 'sug-' + i); const el = document.getElementById('sug-' + i); if (el) el.scrollIntoView({ block: 'nearest' }); } else inp.removeAttribute('aria-activedescendant');
+    };
+    const score = (p, q) => {
+      const ti = norm(p.titulo || ''), words = ti.split(/\s+/);
+      if (ti.startsWith(q)) return 0;
+      if (words.some(w => w.startsWith(q))) return 1;
+      if (ti.includes(q)) return 2;
+      if (norm(p.generos || '').includes(q)) return 3;
+      return norm(p.sinopsis || '').includes(q) ? 4 : -1;
+    };
+    async function suggest() {
+      const raw = inp.value.trim(), q = norm(raw), my = ++seq;
+      if (q.length < 2) return close();
+      let list = [];
+      try { list = await catalog(); } catch { }
+      if (my !== seq) return;
+      items = list.map(p => ({ p, s: score(p, q) })).filter(x => x.s >= 0).sort((a, b) => a.s - b.s || (a.p.titulo || '').localeCompare(b.p.titulo || '', 'es')).slice(0, 6).map(x => x.p);
+      box.innerHTML = (items.length
+        ? items.map((p, i) => `<a class="sug" role="option" id="sug-${i}" aria-selected="false" href="#/ver/${encodeURIComponent(p.id)}">${httpsUrl(p.poster) ? `<img src="${esc(p.poster)}" alt="" loading="lazy">` : '<span class="sug-ph"></span>'}<span class="sug-t"><b>${esc(p.titulo)}</b><small>${esc([p.anio, gensOf(p)[0] && cap(gensOf(p)[0]), qualsOf(p).join(' · ')].filter(Boolean).join(' · '))}</small></span></a>`).join('')
+        : '<p class="sug-none">No hay películas con ese nombre en el catálogo.</p>')
+        + `<a class="sug-all" href="#/catalogo?q=${encodeURIComponent(raw)}">Ver todos los resultados para “${esc(raw)}”</a>`;
+      box.hidden = false; inp.setAttribute('aria-expanded', 'true'); act = -1;
+    }
+    inp.addEventListener('input', () => { clearTimeout(t); t = setTimeout(suggest, 130); });
+    inp.addEventListener('focus', () => { if (inp.value.trim().length >= 2) suggest(); });
+    inp.addEventListener('keydown', e => {
+      if (box.hidden) return;
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        if (!items.length) return;
+        e.preventDefault();
+        mark(e.key === 'ArrowDown' ? (act + 1) % items.length : (act <= 0 ? items.length - 1 : act - 1));
+      }
+    });
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      clearTimeout(t); seq++;
+      const q = inp.value.trim();
+      if (act >= 0 && items[act]) { location.hash = '#/ver/' + encodeURIComponent(items[act].id); inp.blur(); close(); return; }
+      close();
+      if (q) location.hash = '#/catalogo?q=' + encodeURIComponent(q);
+    });
+    box.addEventListener('mousedown', e => e.preventDefault()); // no pierde el foco al hacer clic
+    box.addEventListener('click', e => { if (e.target.closest('a')) { inp.blur(); close(); } });
+    document.addEventListener('click', e => { if (!e.target.closest('#search')) close(); });
+    window.addEventListener('hashchange', close);
+  }
 
   /* ---------- arranque ---------- */
   const legal = [];
-  if (hasTmdb()) legal.push('Somos movies.');
-  if (C.CONTACT_EMAIL) legal.push(`Anuncia con nosotros: <a href="mailto:${esc(C.CONTACT_EMAIL)}"><u>${esc(C.CONTACT_EMAIL)}</u></a>.`);
+  if (hasTmdb()) legal.push('Los datos de ayuda al publicar provienen de TMDB. Este producto usa la API de TMDB pero no está respaldado ni certificado por TMDB.');
+  if (C.CONTACT_EMAIL) legal.push(`Si eres titular de derechos y quieres retirar un título, escribe a <a href="mailto:${esc(C.CONTACT_EMAIL)}"><u>${esc(C.CONTACT_EMAIL)}</u></a>.`);
   document.getElementById('legal').innerHTML = legal.join('<br>');
 
   /* ---------- instalar como app ---------- */

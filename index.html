@@ -5,13 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0b10">
   <meta name="description" content="Mira películas libres de derechos completas, reacciona a tus favoritas y guarda tus listas. Todo en español.">
-  <title>Pelipe.pm — Películas libres, somos Movies!</title>
+  <title>Pelipe.pm — Películas libres para ver en español</title>
   <!--build:head-->
-  <link rel="canonical" href="https://pelipe-cloud.github.io/pelipe/">
-  <meta property="og:url" content="https://pelipe-cloud.github.io/pelipe/">
-  <link rel="preload" href="catalogo.json" as="fetch" crossorigin="anonymous">
-  <link rel="preload" href="https://image.tmdb.org/t/p/w1280/subj7knTn4DeS6KS7qI66EQKe9i.jpg" as="image" fetchpriority="high">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Pelipe.pm","url":"https://pelipe-cloud.github.io/pelipe/","inLanguage":"es"}</script>
   <!--/build:head-->
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -24,7 +19,7 @@
   <meta property="og:site_name" content="Pelipe.pm">
   <meta property="og:title" content="Pelipe.pm — Películas libres para ver en español">
   <meta property="og:description" content="Mira películas completas, reacciona a tus favoritas y guarda tus listas.">
-  <meta property="og:image" content="https://pelipe-cloud.github.io/pelipe/og.png">
+  <meta property="og:image" content="https://TU-DOMINIO/og.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,18 +30,20 @@
   <header class="top">
     <a class="logo" href="#/" aria-label="Pelipe.pm, inicio"><svg class="logo-p" viewBox="168 112 236 288" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M168 112H292A112 112 0 0 1 292 336H240V400H168ZM240 176V272H292A48 48 0 0 0 292 176Z"/><path fill="#ffb347" d="M258 197V251L302 224Z"/></svg><span aria-hidden="true">ELIPE</span></a>
     <nav id="nav">
-      <a href="#/" data-r="inicio">Inicio</a>
-      <a href="#/catalogo" data-r="catalogo">Películas</a>
-      <a href="#/proximas" data-r="proximas">Próximas</a>
-      <a href="#/generos" data-r="generos">Géneros</a>
-      <a href="#/favoritas" data-r="favoritas">Favoritas</a>
-      <a href="#/listas" data-r="listas">Mis listas</a>
-      <a href="#/admin" data-r="admin" id="navadmin" hidden>Publicar</a>
-      <a href="#/sorpresa" data-r="sorpresa">🎲 Sorpréndeme</a>
+      <a href="#/" data-r="inicio"><i class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg></i><span>Inicio</span></a>
+      <a href="#/catalogo" data-r="catalogo"><i class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg></i><span>Películas</span></a>
+      <a href="#/proximas" data-r="proximas"><i class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></i><span>Próximas</span></a>
+      <a href="#/favoritas" data-r="favoritas"><i class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20s-7.5-4.7-9.3-9.6C1.6 7.2 3.8 4.2 7 4.2c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.200 0 5.400 3 4.300 6.200C19.500 15.300 12 20 12 20z"/></svg></i><span>Favoritas</span></a>
+      <a href="#/listas" data-r="listas"><i class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.500" cy="6" r="1"/><circle cx="4.500" cy="12" r="1"/><circle cx="4.500" cy="18" r="1"/></svg></i><span>Mis listas</span></a>
+      <a href="#/admin" data-r="admin" id="navadmin" hidden><i class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></i><span>Publicar</span></a>
     </nav>
-    <form id="search" role="search">
-      <input type="search" name="q" placeholder="Buscar…" autocomplete="off" aria-label="Buscar películas">
-    </form>
+    <div class="searchbox">
+      <form id="search" role="search">
+        <input type="search" name="q" placeholder="Buscar películas…" autocomplete="off" aria-label="Buscar películas" role="combobox" aria-expanded="false" aria-controls="sugs" aria-autocomplete="list">
+        <div id="sugs" role="listbox" hidden></div>
+      </form>
+      <a class="surprise" href="#/sorpresa" title="Sorpréndeme: una película al azar"><i class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><g fill="currentColor" stroke="none"><circle cx="9" cy="9" r="1.200"/><circle cx="15" cy="9" r="1.200"/><circle cx="12" cy="12" r="1.200"/><circle cx="9" cy="15" r="1.200"/><circle cx="15" cy="15" r="1.200"/></g></svg></i><span>Sorpréndeme</span></a>
+    </div>
     <div id="acct"></div>
   </header>
 
@@ -61,12 +58,12 @@
 
   <footer>
     <div class="foot-l">
-      <p>Pelipe.pm :)</p>
+      <p>Pelipe.pm es un proyecto personal sin fines de lucro. Todas las películas publicadas son obras propias, de dominio público o con licencia libre.</p>
       <p id="legal"></p>
     </div>
     <div class="foot-r">
       <div id="stats" class="stats"></div>
-      <button type="button" class="link-btn" id="install" hidden>📲 Somos Responsive!</button>
+      <button type="button" class="link-btn" id="install" hidden>📲 Instalar app</button>
       <p class="love">Hecho con amor <span>♥</span></p>
     </div>
   </footer>

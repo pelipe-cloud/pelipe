@@ -271,3 +271,107 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:fle
   .arow>.muted{flex:1 1 100%;margin:0}
   .arow .btn{flex:0 0 auto}
 }
+
+/* ===== cabecera: iconos del menú, buscador con sugerencias y Sorpréndeme ===== */
+/* Para quitar los iconos del menú: basta con descomentar la línea siguiente.  .ic{display:none!important} */
+.ic{display:inline-flex}
+.ic svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#nav a{display:inline-flex;align-items:center;gap:7px}
+.searchbox{display:flex;align-items:center;gap:8px;flex:0 1 460px;min-width:0}
+#search{position:relative;flex:1;min-width:0}
+#search input{width:100%;max-width:none;padding:10px 16px}
+.surprise{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border-radius:999px;background:var(--bg3);border:1px solid var(--line);font-size:.92rem;white-space:nowrap;color:var(--tx)}
+.surprise:hover,.surprise:focus-visible{border-color:var(--acc);outline:0}
+#sugs{position:absolute;top:calc(100% + 8px);left:0;right:0;min-width:min(420px,92vw);background:var(--bg2);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.65);padding:6px;max-height:min(70vh,440px);overflow:auto;z-index:45}
+.sug{display:flex;align-items:center;gap:12px;padding:6px 8px;border-radius:10px}
+.sug img,.sug-ph{width:34px;height:50px;border-radius:6px;object-fit:cover;background:var(--bg3);flex:none;display:block}
+.sug-t{display:flex;flex-direction:column;min-width:0}
+.sug-t b{font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sug-t small{color:var(--mute);font-size:.78rem}
+.sug:hover,.sug.on{background:var(--bg3)}
+.sug-all{display:block;padding:10px 8px 6px;color:var(--acc2);font-size:.85rem;border-top:1px solid var(--line);margin-top:4px}
+.sug-none{padding:10px 8px;color:var(--mute);font-size:.88rem;margin:0}
+@media (max-width:1400px){.surprise span{display:none}.surprise{padding:9px 11px}.searchbox{flex-basis:300px}}
+@media (max-width:720px){
+  .logo{order:1}
+  #acct{order:2;margin-left:auto}
+  .searchbox{order:3;flex:1 0 100%}
+  #nav{order:4;flex:1 0 100%}
+}
+
+/* ===== calidades en las portadas (una o dos etiquetas) ===== */
+.card .qs{position:absolute;top:8px;right:8px;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.card .qs .badge.q{position:static;left:auto;right:auto;top:auto}
+@media (max-width:640px){
+  .card .qs{top:34px;right:auto;left:8px;flex-direction:row;flex-wrap:wrap;align-items:flex-start}
+  .card .qs .badge.q{top:auto;left:auto;right:auto}
+}
+
+/* ===== página de la película: sala de teatro ===== */
+.theater{position:relative;isolation:isolate;padding:16px max(12px,3vw) 40px;background:radial-gradient(120% 70% at 50% 0%,#2a1219 0%,#171019 40%,var(--bg) 78%)}
+.theater::before,.theater::after{content:"";position:absolute;top:0;bottom:0;width:clamp(30px,6vw,96px);z-index:-1;pointer-events:none;background:repeating-linear-gradient(90deg,#5b0f1d 0 9px,#3a0a15 9px 18px);opacity:.5}
+.theater::before{left:0;-webkit-mask-image:linear-gradient(90deg,#000 30%,transparent);mask-image:linear-gradient(90deg,#000 30%,transparent)}
+.theater::after{right:0;-webkit-mask-image:linear-gradient(270deg,#000 30%,transparent);mask-image:linear-gradient(270deg,#000 30%,transparent)}
+.theater-in{max-width:1120px;margin:0 auto;text-align:center}
+.t-back{text-align:left;margin:0}
+.t-title{font-size:clamp(1.5rem,4vw,2.4rem);line-height:1.15;margin:6px 0 16px}
+.t-title small{font-weight:400}
+.theater .player{max-width:none;margin:0 auto;border-radius:14px;border:1px solid rgba(255,255,255,.1);box-shadow:0 0 0 5px rgba(0,0,0,.4),0 30px 90px rgba(0,0,0,.8),0 0 160px rgba(255,90,54,.16)}
+.theater .resume{max-width:none;text-align:center}
+.theater .pbar{max-width:none;justify-content:center}
+.theater .react{max-width:none;justify-content:center;gap:12px 22px;margin-top:18px}
+.theater .chips{justify-content:center}
+.theater .overview{margin:14px auto;max-width:68ch;text-align:center}
+.theater .ficha{max-width:none;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));text-align:center}
+.theater .actions{justify-content:center;margin-top:16px}
+.theater .notice.slim{text-align:left;margin-top:12px}
+.theater .newlist{justify-content:center}
+.player.tall{aspect-ratio:16/9}
+@media (max-width:760px){
+  .theater{padding:12px 10px 28px}
+  .theater::before,.theater::after{display:none}
+  .theater .player{border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.7)}
+  .theater .ficha{grid-template-columns:1fr 1fr}
+  /* Google Drive en celular: su reproductor necesita más alto para no verse amontonado */
+  .player.tall{aspect-ratio:auto;height:min(72vh,440px)}
+  .theater-in .player iframe{display:block}
+}
+
+/* ===== calidad y servidor bajo el video ===== */
+.servers{margin:16px auto 4px;max-width:1120px;text-align:center}
+.servers-h{font-size:.78rem;color:var(--mute);margin:0 0 8px;letter-spacing:.08em;text-transform:uppercase}
+.srv-group{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 12px;margin:8px 0}
+.srv-q{background:var(--acc);color:#fff;font-weight:800;padding:4px 10px;border-radius:8px;font-size:.85rem;min-width:58px;text-align:center}
+.srv-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.srv{display:inline-flex;align-items:center;gap:9px;padding:8px 14px 8px 10px;border-radius:12px;background:var(--bg3);border:1px solid var(--line);color:var(--tx);text-align:left}
+.srv:hover{border-color:#4a4a60}
+.srv.on{border-color:var(--acc);background:#2a1a18;box-shadow:0 0 0 1px var(--acc) inset}
+.srv-t{display:flex;flex-direction:column;line-height:1.15}
+.srv-t b{font-size:.88rem}
+.srv-t small{color:var(--mute);font-size:.74rem}
+.flag{width:24px;height:16px;border-radius:3px;box-shadow:0 0 0 1px rgba(255,255,255,.22);flex:none;display:block}
+@media (max-width:640px){
+  .srv-group{flex-direction:column;align-items:stretch}
+  .srv-q{align-self:flex-start}
+  .srv-btns{justify-content:flex-start}
+  .srv{flex:1 1 calc(50% - 8px);min-width:0}
+}
+
+/* ===== publicar: calidades y servidores ===== */
+.pform fieldset.srvs,.pform fieldset.calfs{border:1px solid var(--line);border-radius:10px;padding:8px 14px 12px;margin:14px 0;min-width:0}
+.pform fieldset.srvs legend,.pform fieldset.calfs legend{padding:0 6px;font-size:.9rem}
+.pform fieldset.calfs{display:flex;flex-wrap:wrap;gap:6px 22px}
+.pform fieldset.calfs legend{flex:none}
+.pform fieldset.calfs .chk{margin:6px 0}
+.srow{border:1px solid var(--line);border-radius:10px;padding:10px;margin:10px 0;background:rgba(255,255,255,.02)}
+.srow-top{display:grid;grid-template-columns:96px 1.3fr 1fr auto;gap:8px;margin-bottom:8px}
+.srow .sinfo{margin:6px 0 0;font-size:.82rem}
+@media (max-width:640px){.srow-top{grid-template-columns:1fr 1fr}.srow-top .sn,.srow-top .srow-rm{grid-column:1/-1}}
+
+/* pantallas medianas: cabecera más compacta para que quepan menú, buscador ancho y cuenta */
+@media (min-width:721px) and (max-width:1500px){
+  .top{gap:14px}
+  #nav a{padding:6px 9px;gap:6px}
+  .gbtn span{display:none}
+  .gbtn::after{content:"Entrar con Google"}
+}

@@ -88,7 +88,9 @@ function page(p) {
     genre: gens(p).length ? gens(p) : undefined, inLanguage: undefined, isAccessibleForFree: true, url: url || undefined,
     potentialAction: SITE ? { '@type': 'WatchAction', target: `${SITE}/#/ver/${encodeURIComponent(p.id)}` } : undefined
   };
-  const chips = [p.anio, dur(p.duracion), p.calidad, ...gens(p)].filter(Boolean).map(x => `<span class="chip">${esc(x)}</span>`).join('');
+  const QO = ['4K', '1080p'];
+  const quals = [...new Set(Array.isArray(p.calidades) && p.calidades.length ? p.calidades : p.calidad ? [p.calidad] : [])].sort((a, b) => (QO.indexOf(a) + 1 || 9) - (QO.indexOf(b) + 1 || 9));
+  const chips = [p.anio, dur(p.duracion), ...quals, ...gens(p)].filter(Boolean).map(x => `<span class="chip">${esc(x)}</span>`).join('');
   return `<!doctype html>
 <html lang="es">
 <head>
@@ -120,7 +122,7 @@ ${img ? `<img src="${esc(img)}" alt="Póster de ${esc(p.titulo)}" width="230" he
 <h1>${esc(p.titulo)}</h1>
 <div class="chips">${chips}</div>
 <p>${esc(p.sinopsis || '')}</p>
-<p class="lic">${p.licencia && LIC[p.licencia] ? `Licencia: ${esc(LIC[p.licencia])}.` : ''} ${esc(p.creditos || '')}</p>
+${p.creditos ? `<p class="lic">${esc(p.creditos)}</p>` : ''}
 <p><a class="btn" href="${play}">▶ Ver película</a> &nbsp; <a class="btn ghost" href="../../#/catalogo">Más películas</a></p>
 </div>
 </article>
