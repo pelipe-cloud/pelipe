@@ -1471,8 +1471,8 @@ import { Cloud } from './auth.js';
 
   /* ---------- arranque ---------- */
   const legal = [];
-  if (hasTmdb()) legal.push('Somos cine. :)');
-  if (C.CONTACT_EMAIL) legal.push(`Si quieres pautar con nosotros escribe a: <a href="mailto:${esc(C.CONTACT_EMAIL)}"><u>${esc(C.CONTACT_EMAIL)}</u></a>.`);
+  if (hasTmdb()) legal.push('');
+  if (C.CONTACT_EMAIL) legal.push(`Anuncia con nosotros escribe a: <a href="mailto:${esc(C.CONTACT_EMAIL)}"><u>${esc(C.CONTACT_EMAIL)}</u></a>.`);
   document.getElementById('legal').innerHTML = legal.join('<br>');
 
   /* ---------- instalar como app ---------- */
