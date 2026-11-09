@@ -514,8 +514,7 @@ import { Cloud } from './auth.js';
       (!p.genero || gensOf(x).some(g => norm(g) === norm(p.genero))) &&
       (!p.anio || String(x.anio) === p.anio) &&
       (!p.hasta || (Number(x.anio) > 0 && Number(x.anio) <= Number(p.hasta))) &&
-      (!p.calidad || x.calidad === p.calidad) &&
-      (!p.licencia || x.licencia === p.licencia));
+      (!p.calidad || x.calidad === p.calidad));
     if (orden === 'az') items.sort((a, b) => a.titulo.localeCompare(b.titulo, 'es'));
     else if (orden === 'anio') items.sort((a, b) => (Number(b.anio) || 0) - (Number(a.anio) || 0));
     const titulo = p.q ? `Resultados para “${esc(p.q)}”` : p.genero ? esc(cap(p.genero)) : p.hasta ? `Clásicos (hasta ${esc(p.hasta)})` : 'Películas';
@@ -527,7 +526,6 @@ import { Cloud } from './auth.js';
         <select name="genero"><option value="">Género</option>${gm.map(g => `<option value="${esc(g.name)}" ${norm(p.genero) === norm(g.name) ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select>
         <select name="anio"><option value="">Año</option>${years.map(y => `<option ${p.anio === y ? 'selected' : ''}>${esc(y)}</option>`).join('')}</select>
         <select name="calidad"><option value="">Calidad</option>${CALIDADES.map(c => `<option ${p.calidad === c ? 'selected' : ''}>${c}</option>`).join('')}</select>
-        <select name="licencia"><option value="">Licencia</option>${Object.entries(LICENCIAS).map(([k, t]) => `<option value="${k}" ${p.licencia === k ? 'selected' : ''}>${t}</option>`).join('')}</select>
         <select name="orden">${[['recientes', 'Más recientes publicadas'], ['anio', 'Año de estreno'], ['az', 'Título A–Z']].map(([v, t]) => `<option value="${v}" ${orden === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
       </form>
       <p class="muted">${items.length} película${items.length === 1 ? '' : 's'}</p>
@@ -554,6 +552,40 @@ import { Cloud } from './auth.js';
       const n = new URLSearchParams();
       for (const [k, v] of new FormData(e.currentTarget)) if (v) n.set(k, v);
       location.hash = '#/catalogo?' + n.toString();
+    });
+  }
+
+  /* ---------- próximas: estrenos populares que se acercan (datos de TMDB, los genera build.mjs) ---------- */
+  async function proximas() {
+    setNav('proximas');
+    loading();
+    let l = [];
+    try { const r = await fetch('proximos.json'); if (r.ok) { const j = await r.json(); if (j && Array.isArray(j.peliculas)) l = j.peliculas; } } catch { }
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const day = x => new Date(x.fecha + 'T12:00:00');
+    l = l.filter(x => x && x.titulo && /^\d{4}-\d{2}-\d{2}$/.test(x.fecha || '') && day(x) >= hoy); // el archivo puede tener unas horas de retraso
+    const falta = x => Math.round((day(x) - hoy) / 864e5);
+    const when = x => { const n = falta(x); return n <= 0 ? 'Estreno hoy' : n === 1 ? 'Estreno mañana' : `Faltan ${n} días`; };
+    const fdate = (x, long) => day(x).toLocaleDateString('es', { day: 'numeric', month: long ? 'long' : 'short', ...(day(x).getFullYear() !== hoy.getFullYear() ? { year: 'numeric' } : {}) });
+    const card = (x, i) => `<a class="card" href="#/proximas" data-i="${i}"><div class="poster">${httpsUrl(x.poster) ? `<img loading="lazy" src="${esc(x.poster)}" alt="${esc(x.titulo)}">` : ''}<div class="badge">${esc(fdate(x))}</div></div><b>${esc(x.titulo)}</b><span>${esc(when(x))}</span></a>`;
+    if (!l.length) { app.innerHTML = '<div class="wrap"><h1 style="margin-bottom:16px">Próximas</h1><p class="empty">Aún no hay estrenos cargados. Vuelve pronto.</p></div>'; return; }
+    app.innerHTML = `<div class="wrap">
+      <h1 style="margin-bottom:6px">Próximas</h1>
+      <p class="muted" style="max-width:70ch;margin-bottom:16px">Los estrenos más populares que se acercan, en cines y plataformas. Aquí no se reproducen: es solo información.</p>
+      <form class="filters"><select id="po"><option value="pop">Más populares</option><option value="fecha">Fecha de estreno</option></select></form>
+      <div class="grid" id="pg"></div>
+      <p class="muted" style="font-size:.8rem;margin-top:26px">Datos e imágenes: TMDB. Este producto usa la API de TMDB pero no está respaldado ni certificado por TMDB.</p></div>`;
+    let cur = l;
+    const draw = () => { document.getElementById('pg').innerHTML = cur.map(card).join(''); };
+    draw();
+    document.getElementById('po').onchange = e => { cur = e.target.value === 'fecha' ? [...l].sort((a, b) => a.fecha.localeCompare(b.fecha)) : l; draw(); };
+    document.getElementById('pg').addEventListener('click', e => {
+      const a = e.target.closest('.card'); if (!a) return;
+      e.preventDefault();
+      const x = cur[Number(a.dataset.i)]; if (!x) return;
+      const tr = /^[\w-]{6,20}$/.test(x.trailer || '') ? `https://www.youtube.com/watch?v=${x.trailer}` : '';
+      openModal(`<div class="proximo"><h2>${esc(x.titulo)}</h2><p class="muted">${esc(fdate(x, true))} · ${esc(when(x))}${x.generos ? ' · ' + esc(x.generos) : ''}</p><p style="margin:12px 0">${esc(x.sinopsis || 'Sin sinopsis disponible.')}</p>${tr ? '<button class="btn" id="ptr" type="button">▶ Ver tráiler</button>' : ''}<p class="muted" style="font-size:.8rem;margin-top:12px">Solo información: esta película no se reproduce en Pelipe.pm.</p></div>`);
+      const b = document.getElementById('ptr'); if (b) b.onclick = () => openTrailer(tr);
     });
   }
 
@@ -859,6 +891,29 @@ import { Cloud } from './auth.js';
     return r.json();
   }
 
+  // Busca la película por título (y año) en TMDB y devuelve su póster y fondo oficiales
+  async function tmdbArt(titulo, anio) {
+    try {
+      const y = /^\d{4}$/.test(anio) ? anio : '';
+      let rs = (await tmdb('/search/movie', { query: titulo, include_adult: 'false', year: y })).results || [];
+      if (!rs.some(x => x.poster_path) && y) rs = (await tmdb('/search/movie', { query: titulo, include_adult: 'false' })).results || [];
+      const m = rs.find(x => x.poster_path);
+      if (!m) return null;
+      return { nombre: `${m.title}${m.release_date ? ' (' + m.release_date.slice(0, 4) + ')' : ''}`, poster: 'https://image.tmdb.org/t/p/w500' + m.poster_path, fondo: m.backdrop_path ? 'https://image.tmdb.org/t/p/w1280' + m.backdrop_path : '' };
+    } catch { return null; }
+  }
+  async function autoThumb(url) {
+    const s = parseSource(url);
+    if (!s) return {};
+    const ok = u => new Promise(res => { const i = new Image(); i.onload = () => res(i.naturalWidth > 200); i.onerror = () => res(false); i.src = u; });
+    if (s.tipo === 'youtube') {
+      const b = `https://i.ytimg.com/vi/${s.id}/`;
+      return { poster: b + 'hqdefault.jpg', fondo: b + ((await ok(b + 'maxresdefault.jpg')) ? 'maxresdefault.jpg' : 'hqdefault.jpg') };
+    }
+    if (s.tipo === 'archive') return { poster: `https://archive.org/services/img/${encodeURIComponent(s.id)}` };
+    return {};
+  }
+
   async function adminPage() {
     setNav('admin');
     if (!Cloud.enabled) { app.innerHTML = needCloud(); return; }
@@ -925,8 +980,8 @@ import { Cloud } from './auth.js';
         <label>Subtítulos <small class="muted">opcional; uno por línea: Idioma | enlace al .srt o .vtt (https, o ruta dentro de tu sitio como subs/es.srt). La persona decide si los activa.</small><textarea name="subtitulos" rows="3" placeholder="Español | subs/mi-pelicula-es.srt">${esc(linesOf(cur?.subtitulos))}</textarea></label>
         <label>Otros audios <small class="muted">opcional; uno por línea: Nombre | enlace al video completo con ese audio (.mp4, .webm o .m3u8). El video de arriba es el audio principal.</small><textarea name="versiones" rows="3" placeholder="Inglés original | https://…/mi-pelicula-en.mp4">${esc(linesOf(cur?.versiones))}</textarea></label>
         <label>Nombre del audio principal <small class="muted">opcional; si lo dejas vacío se llama “Original”</small><input name="audioNombre" maxlength="40" placeholder="Español latino" value="${v('audioNombre')}"></label>
-        <label>Póster (enlace https a una imagen vertical)<input name="poster" type="url" value="${v('poster')}"></label>
-        <label>Imagen de fondo para la portada <small class="muted">opcional, horizontal</small><input name="fondo" type="url" value="${v('fondo')}"></label>
+        <label>Póster (enlace https a una imagen vertical) <small class="muted">si lo dejas vacío, se busca la portada oficial por título (TMDB)</small><input name="poster" type="url" value="${v('poster')}"></label>
+        <label>Imagen de fondo para la portada <small class="muted">opcional, horizontal; vacío = también se busca en TMDB</small><input name="fondo" type="url" value="${v('fondo')}"></label>
         <label>Tráiler <small class="muted">opcional, enlace de YouTube o Vimeo</small><input name="trailer" type="url" value="${v('trailer')}"></label>
         <label>Licencia *<select name="licencia" required><option value="">Elige…</option>${Object.entries(LICENCIAS).map(([k, t]) => `<option value="${k}" ${cur?.licencia === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
         <label>Créditos / atribución / enlace a la licencia<input name="creditos" maxlength="300" value="${v('creditos')}"></label>
@@ -994,6 +1049,13 @@ import { Cloud } from './auth.js';
       if (vers.bad) return toast('Otros audios: usa “Nombre | enlace” con un .mp4, .webm o .m3u8 (https).');
       const cal = g('calificacion').replace(',', '.');
       if (cal && !(Number(cal) >= 0 && Number(cal) <= 10)) return toast('La calificación va de 0 a 10.');
+      // Sin imágenes: 1.º la portada oficial buscada en TMDB por título (y año); 2.º la miniatura del video (YouTube / Internet Archive)
+      if (!g('poster') && !g('fondo')) {
+        let t = hasTmdb() && g('titulo') ? await tmdbArt(g('titulo'), g('anio')) : null;
+        if (t) toast(`Portada oficial tomada de TMDB: “${t.nombre}”. Si no es la película correcta, cámbiala editando.`);
+        else if (g('url')) { t = await autoThumb(g('url')); if (t.poster || t.fondo) toast('No se halló la portada oficial; se usó la miniatura del video.'); }
+        if (t && (t.poster || t.fondo)) { f.elements.poster.value = t.poster || ''; f.elements.fondo.value = t.fondo || ''; }
+      }
       const id = editing || 'p' + Date.now().toString(36);
       const d = { subtitulos: subs.ok, versiones: vers.ok, audioNombre: g('audioNombre'), calificacion: cal ? Number(Number(cal).toFixed(1)) : '', titulo: g('titulo'), anio: g('anio'), duracion: g('duracion'), generos: g('generos'), calidad: g('calidad'), sinopsis: g('sinopsis'), poster: g('poster'), fondo: g('fondo'), trailer: g('trailer'), url: g('url'), licencia: g('licencia'), creditos: g('creditos'), creado: modo === 'programar' ? when : (cur && (bor || (curPub && !(curPub.publicarEn > Date.now())))) ? (cur.creado || Date.now()) : Date.now(), publicarEn: when, actualizado: Date.now(), por: cur?.por || user.email };
       try {
@@ -1196,6 +1258,7 @@ import { Cloud } from './auth.js';
     [/^#\/catalogo/, catalogPage],
     [/^#\/(?:explorar|pelicula)/, () => { location.replace('#/catalogo'); }],
     [/^#\/sorpresa/, surprise],
+    [/^#\/proximas/, proximas],
     [/^#\/generos/, genresPage],
     [/^#\/favoritas/, favoritas],
     [/^#\/listas\/([^?]+)/, m => listaDetalle(m[1])],
@@ -1230,7 +1293,7 @@ import { Cloud } from './auth.js';
   /* ---------- arranque ---------- */
   const legal = [];
   if (hasTmdb()) legal.push('Los datos de ayuda al publicar provienen de TMDB. Este producto usa la API de TMDB pero no está respaldado ni certificado por TMDB.');
-  if (C.CONTACT_EMAIL) legal.push(`Duda, o quieres anunciar? Escribenos... <a href="mailto:${esc(C.CONTACT_EMAIL)}"><u>${esc(C.CONTACT_EMAIL)}</u></a>.`);
+  if (C.CONTACT_EMAIL) legal.push(`Si eres titular de derechos y quieres retirar un título, escribe a <a href="mailto:${esc(C.CONTACT_EMAIL)}"><u>${esc(C.CONTACT_EMAIL)}</u></a>.`);
   document.getElementById('legal').innerHTML = legal.join('<br>');
 
   /* ---------- instalar como app ---------- */
