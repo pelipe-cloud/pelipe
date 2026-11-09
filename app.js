@@ -192,7 +192,7 @@ import { Cloud } from './auth.js';
   const bust = () => { cat = null; try { localStorage.removeItem(LS_CAT); } catch { } };
   function genreMap(list) {
     const m = new Map();
-    for (const p of list) for (const g of gensOf(p)) {
+    for (const p of list) for (const g of gensOf(p).slice(0, 1)) { // solo el primer género: cada película va en una sola categoría
       const k = norm(g);
       if (!m.has(k)) m.set(k, { name: cap(g), items: [] });
       m.get(k).items.push(p);
@@ -562,7 +562,7 @@ import { Cloud } from './auth.js';
     const orden = p.orden || 'recientes';
     const items = list.filter(x =>
       (!p.q || norm([x.titulo, x.sinopsis, x.generos].join(' ')).includes(norm(p.q))) &&
-      (!p.genero || gensOf(x).some(g => norm(g) === norm(p.genero))) &&
+      (!p.genero || norm(gensOf(x)[0] || '') === norm(p.genero)) &&
       (!p.anio || String(x.anio) === p.anio) &&
       (!p.hasta || (Number(x.anio) > 0 && Number(x.anio) <= Number(p.hasta))) &&
       (!p.calidad || qualsOf(x).includes(p.calidad)));
@@ -829,7 +829,7 @@ import { Cloud } from './auth.js';
       const gens = gensOf(p);
       const favLabel = () => isFav(p.id) ? '♥ En favoritas' : '♡ Favorita';
       let similar = [];
-      try { similar = (await catalog()).filter(x => x.id !== p.id && gensOf(x).some(g => gens.some(h => norm(h) === norm(g)))).slice(0, 12); } catch { }
+      try { similar = (await catalog()).filter(x => x.id !== p.id && gens[0] && norm(gensOf(x)[0] || '') === norm(gens[0])).slice(0, 12); } catch { }
       const srvs = serversOf(p);
       const first = srvs[0] ? srvs[0].u : p.url;
       let curSrv = 0;
@@ -848,7 +848,7 @@ import { Cloud } from './auth.js';
         <div class="pbar" id="pbar" hidden></div>
         ${srvPanel}
         ${live ? reactHtml() : ''}
-        ${gens.length ? `<div class="chips">${gens.map(g => `<a class="chip" href="#/catalogo?genero=${encodeURIComponent(g)}">${esc(g)}</a>`).join('')}</div>` : ''}
+        ${gens.length ? `<div class="chips">${gens.slice(0, 1).map(g => `<a class="chip" href="#/catalogo?genero=${encodeURIComponent(g)}">${esc(g)}</a>`).join('')}</div>` : ''}
         ${p.sinopsis ? `<p class="overview">${esc(p.sinopsis)}</p>` : ''}
         <dl class="ficha">${[
           ['Año', p.anio],
@@ -1055,7 +1055,7 @@ import { Cloud } from './auth.js';
           <label>Duración (min)<input name="duracion" inputmode="numeric" maxlength="4" value="${v('duracion')}"></label>
           <label>Calificación (0–10)<input name="calificacion" inputmode="decimal" maxlength="4" value="${v('calificacion')}"></label>
         </div>
-        <label>Género(s) <small class="muted">separados por coma; el primero es el que se ve en la tarjeta</small><input name="generos" maxlength="120" value="${v('generos')}"></label>
+        <label>Género(s) <small class="muted">separados por coma; solo el primero cuenta: es la categoría única de la película</small><input name="generos" maxlength="120" value="${v('generos')}"></label>
         <fieldset class="calfs"><legend>Calidades disponibles <small class="muted">marca todas las que tenga; se ven en la portada</small></legend>
           ${CALIDADES.map(c => `<label class="chk"><input type="checkbox" name="cal" value="${c}" ${cur && qualsOf(cur).includes(c) ? 'checked' : ''}> <span>${c}</span></label>`).join('')}
         </fieldset>
