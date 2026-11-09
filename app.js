@@ -138,17 +138,18 @@ import { Cloud } from './auth.js';
   /* ---------- catálogo ---------- */
   const LICENCIAS = { propia: 'Obra propia', publico: 'Dominio público', cc: 'Creative Commons', permiso: 'Con permiso del titular' };
   const REPORTES = { no_carga: 'El video no carga', se_traba: 'Se corta, se traba o va lento', sin_audio: 'No se escucha / sin audio', audio_mal: 'Audio incorrecto o desfasado', subs_mal: 'Subtítulos mal, desfasados o no aparecen', imagen: 'Mala calidad de imagen', otro: 'Otro problema con la película' };
-  const CALIDADES = ['4K', '1080p']; // solo estas dos se pueden elegir al publicar
-  const QORD = ['4K', '1080p'];
+  const CALIDADES = ['1080p', '720p']; // solo estas dos se pueden elegir al publicar
+  const QORD = ['1080p', '720p'];
+  const nq = q => (q === '720p' ? '720p' : '1080p'); // lo antiguo (4K, 1440p…) pasa a 1080p
   const IDIOMAS = { lat: 'Latino (México)', en: 'English', ensub: 'English (sub. español)' };
   const qRank = q => { const i = QORD.indexOf(q); return i < 0 ? 9 : i; };
   // Calidades de una película, de mayor a menor (las películas antiguas con una sola "calidad" siguen funcionando)
-  const qualsOf = p => [...new Set(Array.isArray(p.calidades) && p.calidades.length ? p.calidades : p.calidad ? [p.calidad] : [])].sort((a, b) => qRank(a) - qRank(b));
-  // Servidores de video: por calidad (4K primero) y con su idioma. Sin servidores guardados, se usa el enlace único de siempre.
+  const qualsOf = p => [...new Set((Array.isArray(p.calidades) && p.calidades.length ? p.calidades : p.calidad ? [p.calidad] : []).map(nq))].sort((a, b) => qRank(a) - qRank(b));
+  // Servidores de video: por calidad (1080p primero) y con su idioma. Sin servidores guardados, se usa el enlace único de siempre.
   function serversOf(p) {
     const has = Array.isArray(p.servidores) && p.servidores.some(x => x && x.u);
-    const raw = has ? p.servidores.filter(x => x && x.u) : p.url ? [{ q: p.calidad === '4K' ? '4K' : '1080p', i: '', n: '', u: p.url }] : [];
-    return raw.map((x, k) => ({ q: x.q === '4K' ? '4K' : '1080p', i: IDIOMAS[x.i] ? x.i : '', n: String(x.n || ''), u: x.u, k })).sort((a, b) => qRank(a.q) - qRank(b.q) || a.k - b.k);
+    const raw = has ? p.servidores.filter(x => x && x.u) : p.url ? [{ q: nq(p.calidad), i: '', n: '', u: p.url }] : [];
+    return raw.map((x, k) => ({ q: nq(x.q), i: IDIOMAS[x.i] ? x.i : '', n: String(x.n || ''), u: x.u, k })).sort((a, b) => qRank(a.q) - qRank(b.q) || a.k - b.k);
   }
   // Banderas en SVG (los emojis de bandera no se ven en Windows)
   const FLAGS = (() => {
@@ -625,14 +626,48 @@ import { Cloud } from './auth.js';
       <p class="muted" style="max-width:70ch;margin-bottom:16px">Los estrenos más populares que se acercan, en cines y plataformas. Aún no están disponibles para ver en Pelipe.pm: es solo información.</p>
       <form class="filters"><select id="po"><option value="pop">Más populares</option><option value="fecha">Fecha de estreno</option></select></form>
       <div class="grid" id="pg"></div>
-      <p class="muted" style="font-size:.8rem;margin-top:26px">¡Palomitas para tí pronto!🍿</p></div>`;
+      <p class="muted" style="font-size:.8rem;margin-top:26px">Datos e imágenes: TMDB. Este producto usa la API de TMDB pero no está respaldado ni certificado por TMDB.</p></div>`;
     let cur = l;
     const draw = () => { document.getElementById('pg').innerHTML = cur.map(card).join(''); };
     draw();
     document.getElementById('po').onchange = e => { cur = e.target.value === 'fecha' ? [...l].sort((a, b) => a.fecha.localeCompare(b.fecha)) : l; draw(); };
+    // En PC: al pasar el cursor sale una ventana flotante con la info y el botón del tráiler (no hace falta hacer clic)
+    const desk = window.matchMedia && matchMedia('(hover:hover) and (pointer:fine)').matches && innerWidth > 760;
+    const trUrl = x => /^[\w-]{6,20}$/.test(x.trailer || '') ? `https://www.youtube.com/watch?v=${x.trailer}` : '';
+    if (desk) {
+      let pk = document.getElementById('peekp');
+      if (!pk) { pk = document.createElement('div'); pk.id = 'peekp'; pk.className = 'peek act'; pk.hidden = true; document.body.appendChild(pk); }
+      let t1 = 0, t2 = 0, over = null;
+      const hide = () => { clearTimeout(t1); clearTimeout(t2); over = null; pk.classList.remove('on'); pk.hidden = true; };
+      const keep = () => clearTimeout(t2);
+      const later = () => { clearTimeout(t1); clearTimeout(t2); t2 = setTimeout(hide, 220); };
+      const show = a => {
+        const x = cur[Number(a.dataset.i)]; if (!x) return;
+        const tr = trUrl(x);
+        pk.innerHTML = `<h4>${esc(x.titulo)}</h4><div class="peek-meta"><span>${esc(fdate(x, true))}</span><span class="peek-r" style="font-size:.85rem">${esc(when(x))}</span>${x.generos ? `<span class="chip">${esc(String(x.generos).split(',')[0].trim())}</span>` : ''}</div><p>${esc(x.sinopsis || 'Sin sinopsis disponible.')}</p>${tr ? '<button class="btn sm" id="pktr" type="button">▶ Ver tráiler</button>' : ''}<p class="peek-note">Solo información: esta película aún no está disponible para ver en Pelipe.pm.</p>`;
+        pk.hidden = false;
+        const r = a.getBoundingClientRect(), w = pk.offsetWidth, h = pk.offsetHeight;
+        let px = r.right + 6; if (px + w > innerWidth - 8) px = r.left - w - 6; if (px < 8) px = Math.max(8, Math.min(innerWidth - w - 8, r.left));
+        let py = r.top + 8; if (py + h > innerHeight - 8) py = innerHeight - h - 8; if (py < 8) py = 8;
+        pk.style.left = px + 'px'; pk.style.top = py + 'px';
+        requestAnimationFrame(() => pk.classList.add('on'));
+        const bt = document.getElementById('pktr'); if (bt) bt.onclick = () => openTrailer(tr);
+      };
+      const pg = document.getElementById('pg');
+      pg.addEventListener('mouseover', e => {
+        const a = e.target.closest('.card'); if (!a) return;
+        keep(); if (a === over) return;
+        clearTimeout(t1); over = a; pk.classList.remove('on'); t1 = setTimeout(() => show(a), 300);
+      });
+      pg.addEventListener('mouseleave', later);
+      pk.onmouseenter = keep; pk.onmouseleave = later;
+      addEventListener('hashchange', hide, { once: true });
+      addEventListener('scroll', hide, { passive: true });
+    }
     document.getElementById('pg').addEventListener('click', e => {
       const a = e.target.closest('.card'); if (!a) return;
       e.preventDefault();
+      if (desk) return; // en PC la información sale al pasar el cursor
       const x = cur[Number(a.dataset.i)]; if (!x) return;
       const tr = /^[\w-]{6,20}$/.test(x.trailer || '') ? `https://www.youtube.com/watch?v=${x.trailer}` : '';
       openModal(`<div class="proximo"><h2>${esc(x.titulo)}</h2><p class="muted">${esc(fdate(x, true))} · ${esc(when(x))}${x.generos ? ' · ' + esc(x.generos) : ''}</p><p style="margin:12px 0">${esc(x.sinopsis || 'Sin sinopsis disponible.')}</p>${tr ? '<button class="btn" id="ptr" type="button">▶ Ver tráiler</button>' : ''}<p class="muted" style="font-size:.8rem;margin-top:12px">Solo información: esta película aún no está disponible para ver en Pelipe.pm.</p></div>`);
@@ -864,7 +899,7 @@ import { Cloud } from './auth.js';
       const first = srvs[0] ? srvs[0].u : p.url;
       let curSrv = 0;
       const quals = qualsOf(p);
-      // Opciones bajo el video: calidad mayor (4K) → menor (1080p), cada una con la bandera de su idioma
+      // Opciones bajo el video: calidad mayor (1080p) → menor (720p), cada una con la bandera de su idioma
       const srvPanel = srvs.length > 1 || srvs.some(s => s.i) ? `<div class="servers" id="servers" role="group" aria-label="Calidad y servidor">
           <p class="servers-h">Elige calidad y servidor</p>
           ${QORD.filter(q => srvs.some(s => s.q === q)).map(q => `<div class="srv-group"><span class="srv-q">${esc(q)}</span><div class="srv-btns">${srvs.map((s, idx) => ({ s, idx })).filter(x => x.s.q === q).map(({ s, idx }, n) => `<button type="button" class="srv ${idx === 0 ? 'on' : ''}" data-k="${idx}" aria-label="${esc(q + ' ' + (IDIOMAS[s.i] || '') + ' ' + (s.n || 'Servidor ' + (n + 1)))}">${flagOf(s.i)}<span class="srv-t"><b>${esc(IDIOMAS[s.i] || 'Idioma original')}</b><small>${esc(s.n || 'Servidor ' + (n + 1))}</small></span></button>`).join('')}</div></div>`).join('')}
@@ -1091,7 +1126,7 @@ import { Cloud } from './auth.js';
         </fieldset>
         <label>Sinopsis<textarea name="sinopsis" rows="4" maxlength="1500">${v('sinopsis')}</textarea></label>
         <fieldset class="srvs"><legend>Servidores de video *</legend>
-          <p class="muted" style="font-size:.84rem">Agrega uno o más servidores. Bajo el video se muestran de la mayor calidad (4K) a la menor (1080p), con la bandera del idioma. Enlaces: YouTube, Vimeo, Dailymotion, Google Drive, Streamable, Odysee, Rumble, Bunny, Cloudflare, Internet Archive, .mp4/.webm/.m3u8 o un sitio autorizado en config.js (https).</p>
+          <p class="muted" style="font-size:.84rem">Agrega uno o más servidores. Bajo el video se muestran de la mayor calidad (1080p) a la menor (720p), con la bandera del idioma. Enlaces: YouTube, Vimeo, Dailymotion, Google Drive, Streamable, Odysee, Rumble, Bunny, Cloudflare, Internet Archive, .mp4/.webm/.m3u8 o un sitio autorizado en config.js (https).</p>
           <div id="srvlist">${(cur && serversOf(cur).length ? serversOf(cur) : [{ q: '1080p', i: 'lat', n: '', u: '' }]).map(srvRow).join('')}</div>
           <button type="button" class="btn ghost sm" id="addsrv">＋ Agregar servidor</button>
         </fieldset>
@@ -1167,7 +1202,7 @@ import { Cloud } from './auth.js';
       e.preventDefault();
       const g = n => f.elements[n].value.trim();
       const modo = f.elements.modo.value, bor = modo === 'borrador';
-      const rows = [...list_.querySelectorAll('.srow')].map(r => ({ q: r.querySelector('.sq').value === '4K' ? '4K' : '1080p', i: r.querySelector('.si').value, n: r.querySelector('.sn').value.trim().slice(0, 30), u: r.querySelector('.su').value.trim() })).filter(x => x.u);
+      const rows = [...list_.querySelectorAll('.srow')].map(r => ({ q: nq(r.querySelector('.sq').value), i: r.querySelector('.si').value, n: r.querySelector('.sn').value.trim().slice(0, 30), u: r.querySelector('.su').value.trim() })).filter(x => x.u);
       if (!bor && !rows.length) return toast('Agrega al menos un servidor con el enlace del video.');
       if (rows.some(x => !parseSource(x.u))) return toast('Hay un enlace de video no compatible. Usa YouTube, Vimeo, Dailymotion, Google Drive, Streamable, Odysee, Rumble, Bunny, Cloudflare Stream, Internet Archive, un .mp4/.webm/.m3u8, o autoriza tu sitio en config.js (EMBED_HOSTS).');
       const sorted = serversOf({ servidores: rows });
@@ -1471,8 +1506,8 @@ import { Cloud } from './auth.js';
 
   /* ---------- arranque ---------- */
   const legal = [];
-  if (hasTmdb()) legal.push('');
-  if (C.CONTACT_EMAIL) legal.push(`Anuncia con nosotros, escribe a: <a href="mailto:${esc(C.CONTACT_EMAIL)}"><u>${esc(C.CONTACT_EMAIL)}</u></a>.`);
+  if (hasTmdb()) legal.push('Los datos de ayuda al publicar provienen de TMDB. Este producto usa la API de TMDB pero no está respaldado ni certificado por TMDB.');
+  if (C.CONTACT_EMAIL) legal.push(`Si eres titular de derechos y quieres retirar un título, escribe a <a href="mailto:${esc(C.CONTACT_EMAIL)}"><u>${esc(C.CONTACT_EMAIL)}</u></a>.`);
   document.getElementById('legal').innerHTML = legal.join('<br>');
 
   /* ---------- instalar como app ---------- */
