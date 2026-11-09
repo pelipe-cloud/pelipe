@@ -22,6 +22,6 @@ window.CONFIG = {
   // --- TMDB (opcional) ---
   // Solo sirve para autocompletar título, sinopsis, póster y tráiler al publicar una película.
   // Clave gratis en https://www.themoviedb.org (Configuración > API). Déjala vacía si no la necesitas.
-  TMDB_API_KEY: "",
+  TMDB_API_KEY: "06e7e727dcf9371ac01ed8da490a5b53",
   LANG: "es-MX"
 };
