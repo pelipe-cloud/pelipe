@@ -19,6 +19,9 @@ jobs:
         with:
           node-version: 20
       - run: node build.mjs
+        env:
+          # Opcional: clave de TMDB para la sección "Próximas" (Settings → Secrets and variables → Actions)
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
       - name: Guardar cambios
         run: |
           git config user.name "pelipe-bot"
