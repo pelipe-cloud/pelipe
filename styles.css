@@ -256,7 +256,9 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:fle
 #install{display:inline-block;color:var(--tx);margin-top:6px}
 
 /* logo: la "P" de Pelipe es el ícono; el resto, en la fuente de cine */
-.logo{display:inline-flex;align-items:baseline;gap:.035em;font-size:2.55rem;line-height:1;flex:none;position:relative;top:3px}
+.logo{display:inline-flex;flex-direction:column;align-items:center;font-size:2.55rem;line-height:1;flex:none;position:relative}
+.logo-row{display:inline-flex;align-items:baseline;gap:.035em}
+.logo-tag{font-family:Inter,system-ui,sans-serif;font-size:.27em;line-height:1;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--acc2);margin-top:.5em;text-shadow:none;white-space:nowrap}
 .logo-p{height:1em;width:auto;display:block;margin:0;filter:drop-shadow(0 1px 0 #7a1d0a) drop-shadow(0 2px 0 #4d1206) drop-shadow(0 0 10px rgba(255,90,54,.35))}
 
 /* publicación: ahora / programada / borrador */
