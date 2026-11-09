@@ -841,7 +841,6 @@ import { Cloud } from './auth.js';
         </div>` : '';
       const srvLabel = () => { const s = srvs[curSrv]; return s ? [s.q, IDIOMAS[s.i], s.n].filter(Boolean).join(' · ') : ''; };
       app.innerHTML = `<div class="theater"><div class="theater-in">
-        <p class="t-back"><a href="#/catalogo" class="muted">← Películas</a></p>
         <h1 class="t-title">${esc(p.titulo)} ${p.anio ? `<small class="muted">(${esc(p.anio)})</small>` : ''}</h1>
         ${live ? '' : `<div class="notice slim"><p><b>Vista previa.</b> ${draft ? 'Este es un borrador: solo tú puedes verlo.' : 'Programada para el ' + esc(new Date(p.publicarEn).toLocaleString('es', { dateStyle: 'long', timeStyle: 'short' })) + '; hasta entonces solo tú puedes verla.'}</p></div>`}
         ${playerHtml(parseSource(first), p.poster)}
