@@ -387,3 +387,9 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:fle
 .peek.act{pointer-events:auto;width:320px}
 .peek.act .btn{margin-top:12px}
 .peek-note{margin:12px 0 0!important;font-size:.76rem!important;color:var(--acc2)!important;-webkit-line-clamp:3!important}
+
+/* ===== botón de play sobre la portada de las películas ===== */
+.card .pl{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;display:grid;place-items:center;background:rgba(11,11,16,.55);border:2px solid rgba(255,255,255,.9);box-shadow:0 4px 16px rgba(0,0,0,.5);pointer-events:none;transition:transform .18s,background .18s,border-color .18s;z-index:1}
+.card .pl svg{width:22px;height:22px;fill:#fff;margin-left:-3px}
+.card:hover .pl{transform:scale(1.12);background:var(--acc);border-color:var(--acc)}
+.scroller .card .pl,.rm .pl{width:40px;height:40px;margin:-20px 0 0 -20px}
