@@ -651,6 +651,36 @@ import { Cloud } from './auth.js';
     } catch (e) { failCloud(e); }
   }
 
+  /* ---------- vista previa al pasar el cursor por una película (solo con ratón) ---------- */
+  (() => {
+    if (!window.matchMedia || !matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+    const tip = document.createElement('div'); tip.className = 'peek'; tip.setAttribute('aria-hidden', 'true'); tip.hidden = true; document.body.appendChild(tip);
+    let timer = 0, cur = null;
+    const hide = () => { clearTimeout(timer); cur = null; tip.classList.remove('on'); tip.hidden = true; };
+    const show = a => {
+      const id = decodeURIComponent((a.getAttribute('href') || '').replace('#/ver/', ''));
+      const p = (cat || []).find(x => String(x.id) === id);
+      if (!p) return;
+      const r = Number(p.calificacion), g = gensOf(p)[0];
+      tip.innerHTML = `<h4>${esc(p.titulo)}</h4><div class="peek-meta">${r > 0 ? `<span class="peek-r">${r.toFixed(1)}<small>/10</small></span>` : ''}${p.anio ? `<span>${esc(p.anio)}</span>` : ''}${p.duracion ? `<span>${esc(fmtDur(p.duracion))}</span>` : ''}${g ? `<span class="chip">${esc(cap(g))}</span>` : ''}</div>${p.sinopsis ? `<p>${esc(p.sinopsis)}</p>` : ''}`;
+      tip.hidden = false;
+      const b = a.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight, vw = innerWidth, vh = innerHeight;
+      let x = b.right + 10; if (x + w > vw - 8) x = b.left - w - 10; if (x < 8) x = Math.max(8, Math.min(vw - w - 8, b.left));
+      let y = b.top + 8; if (y + h > vh - 8) y = vh - h - 8; if (y < 8) y = 8;
+      tip.style.left = x + 'px'; tip.style.top = y + 'px';
+      requestAnimationFrame(() => tip.classList.add('on'));
+    };
+    document.addEventListener('mouseover', e => {
+      const a = e.target.closest && e.target.closest('a.card[href^="#/ver/"]');
+      if (!a) { if (cur) hide(); return; }
+      if (a === cur) return;
+      hide(); cur = a; timer = setTimeout(() => show(a), 450);
+    });
+    document.addEventListener('mouseleave', hide);
+    addEventListener('scroll', hide, { passive: true }); addEventListener('hashchange', hide); addEventListener('blur', hide);
+    document.addEventListener('click', hide);
+  })();
+
   /* ---------- reacciones tipo Facebook (sin necesidad de registro) ---------- */
   const REACCIONES = [
     ['like', '👍', 'Me gusta', '#2d88ff'], ['love', '❤️', 'Me encanta', '#f33e58'], ['haha', '😆', 'Me divierte', '#f7b125'],
