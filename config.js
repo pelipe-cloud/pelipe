@@ -21,7 +21,7 @@ FIREBASE: {
   // que permita ser incrustado en un iframe. Se incrusta con permisos reducidos. Publica solo contenido con derechos.
   EMBED_HOSTS: ["https://bysedikamoum.com", "https://filemoon.org/es", "https://filemoon.org/en", "https://n1mwq.org", "https://morencius.com"],
   // Correo para que titulares de derechos pidan retirar un título (se muestra en el pie de página).
-  CONTACT_EMAIL: "pelipedesoporte@gmail.com",
+  CONTACT_EMAIL: "pelipepubs@gmail.com",
 
   // --- TMDB (opcional) ---
   // Solo sirve para autocompletar título, sinopsis, póster y tráiler al publicar una película.
