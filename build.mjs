@@ -88,8 +88,7 @@ function page(p) {
     genre: gens(p).length ? gens(p) : undefined, inLanguage: undefined, isAccessibleForFree: true, url: url || undefined,
     potentialAction: SITE ? { '@type': 'WatchAction', target: `${SITE}/#/ver/${encodeURIComponent(p.id)}` } : undefined
   };
-  const QO = ['1080p', '720p'];
-  const quals = [...new Set((Array.isArray(p.calidades) && p.calidades.length ? p.calidades : p.calidad ? [p.calidad] : []).map(q => (q === '720p' ? '720p' : '1080p')))].sort((a, b) => (QO.indexOf(a) + 1 || 9) - (QO.indexOf(b) + 1 || 9));
+  const quals = ['HD'];
   const chips = [p.anio, dur(p.duracion), ...quals, ...gens(p)].filter(Boolean).map(x => `<span class="chip">${esc(x)}</span>`).join('');
   return `<!doctype html>
 <html lang="es">

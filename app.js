@@ -138,14 +138,13 @@ import { Cloud } from './auth.js';
   /* ---------- catálogo ---------- */
   const LICENCIAS = { propia: 'Obra propia', publico: 'Dominio público', cc: 'Creative Commons', permiso: 'Con permiso del titular' };
   const REPORTES = { no_carga: 'El video no carga', se_traba: 'Se corta, se traba o va lento', sin_audio: 'No se escucha / sin audio', audio_mal: 'Audio incorrecto o desfasado', subs_mal: 'Subtítulos mal, desfasados o no aparecen', imagen: 'Mala calidad de imagen', otro: 'Otro problema con la película' };
-  const CALIDADES = ['1080p', '720p']; // solo estas dos se pueden elegir al publicar
-  const QORD = ['1080p', '720p'];
-  const nq = q => (q === '720p' ? '720p' : '1080p'); // lo antiguo (4K, 1440p…) pasa a 1080p
+  const QORD = ['HD']; // una sola calidad: HD (las calidades antiguas —4K, 1080p, 720p…— pasan a HD)
+  const nq = () => 'HD';
   const IDIOMAS = { lat: 'Latino (México)', en: 'English', ensub: 'English (sub. español)' };
   const qRank = q => { const i = QORD.indexOf(q); return i < 0 ? 9 : i; };
-  // Calidades de una película, de mayor a menor (las películas antiguas con una sola "calidad" siguen funcionando)
-  const qualsOf = p => [...new Set((Array.isArray(p.calidades) && p.calidades.length ? p.calidades : p.calidad ? [p.calidad] : []).map(nq))].sort((a, b) => qRank(a) - qRank(b));
-  // Servidores de video: por calidad (1080p primero) y con su idioma. Sin servidores guardados, se usa el enlace único de siempre.
+  // Toda película se muestra como HD (las antiguas con otra calidad guardada siguen funcionando)
+  const qualsOf = () => ['HD'];
+  // Servidores de video, con su idioma. Sin servidores guardados, se usa el enlace único de siempre.
   function serversOf(p) {
     const has = Array.isArray(p.servidores) && p.servidores.some(x => x && x.u);
     const raw = has ? p.servidores.filter(x => x && x.u) : p.url ? [{ q: nq(p.calidad), i: '', n: '', u: p.url }] : [];
@@ -565,8 +564,7 @@ import { Cloud } from './auth.js';
       (!p.q || norm([x.titulo, x.sinopsis, x.generos].join(' ')).includes(norm(p.q))) &&
       (!p.genero || norm(gensOf(x)[0] || '') === norm(p.genero)) &&
       (!p.anio || String(x.anio) === p.anio) &&
-      (!p.hasta || (Number(x.anio) > 0 && Number(x.anio) <= Number(p.hasta))) &&
-      (!p.calidad || qualsOf(x).includes(p.calidad)));
+      (!p.hasta || (Number(x.anio) > 0 && Number(x.anio) <= Number(p.hasta))));
     if (orden === 'az') items.sort((a, b) => a.titulo.localeCompare(b.titulo, 'es'));
     else if (orden === 'anio') items.sort((a, b) => (Number(b.anio) || 0) - (Number(a.anio) || 0));
     const titulo = p.q ? `Resultados para “${esc(p.q)}”` : p.genero ? esc(cap(p.genero)) : p.hasta ? `Clásicos (hasta ${esc(p.hasta)})` : 'Películas';
@@ -577,7 +575,6 @@ import { Cloud } from './auth.js';
         <input type="hidden" name="hasta" value="${esc(p.hasta || '')}">
         <select name="genero"><option value="">Género</option>${gm.map(g => `<option value="${esc(g.name)}" ${norm(p.genero) === norm(g.name) ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select>
         <select name="anio"><option value="">Año</option>${years.map(y => `<option ${p.anio === y ? 'selected' : ''}>${esc(y)}</option>`).join('')}</select>
-        <select name="calidad"><option value="">Calidad</option>${CALIDADES.map(c => `<option ${p.calidad === c ? 'selected' : ''}>${c}</option>`).join('')}</select>
         <select name="orden">${[['recientes', 'Más recientes publicadas'], ['anio', 'Año de estreno'], ['az', 'Título A–Z']].map(([v, t]) => `<option value="${v}" ${orden === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
       </form>
       <p class="muted">${items.length} película${items.length === 1 ? '' : 's'}</p>
@@ -899,9 +896,9 @@ import { Cloud } from './auth.js';
       const first = srvs[0] ? srvs[0].u : p.url;
       let curSrv = 0;
       const quals = qualsOf(p);
-      // Opciones bajo el video: calidad mayor (1080p) → menor (720p), cada una con la bandera de su idioma
-      const srvPanel = srvs.length > 1 || srvs.some(s => s.i) ? `<div class="servers" id="servers" role="group" aria-label="Calidad y servidor">
-          <p class="servers-h">Elige calidad y servidor</p>
+      // Opciones bajo el video: HD, cada servidor con la bandera de su idioma
+      const srvPanel = srvs.length > 1 || srvs.some(s => s.i) ? `<div class="servers" id="servers" role="group" aria-label="Servidor">
+          <p class="servers-h">Elige servidor</p>
           ${QORD.filter(q => srvs.some(s => s.q === q)).map(q => `<div class="srv-group"><span class="srv-q">${esc(q)}</span><div class="srv-btns">${srvs.map((s, idx) => ({ s, idx })).filter(x => x.s.q === q).map(({ s, idx }, n) => `<button type="button" class="srv ${idx === 0 ? 'on' : ''}" data-k="${idx}" aria-label="${esc(q + ' ' + (IDIOMAS[s.i] || '') + ' ' + (s.n || 'Servidor ' + (n + 1)))}">${flagOf(s.i)}<span class="srv-t"><b>${esc(IDIOMAS[s.i] || 'Idioma original')}</b><small>${esc(s.n || 'Servidor ' + (n + 1))}</small></span></button>`).join('')}</div></div>`).join('')}
         </div>` : '';
       const srvLabel = () => { const s = srvs[curSrv]; return s ? [s.q, IDIOMAS[s.i], s.n].filter(Boolean).join(' · ') : ''; };
@@ -1062,7 +1059,7 @@ import { Cloud } from './auth.js';
   }
 
   // Una fila del formulario de servidores: calidad, idioma, nombre opcional y enlace
-  const srvRow = s => `<div class="srow"><div class="srow-top"><select class="sq" aria-label="Calidad">${QORD.map(q => `<option ${s.q === q ? 'selected' : ''}>${q}</option>`).join('')}</select><select class="si" aria-label="Idioma"><option value="lat" ${s.i === 'lat' ? 'selected' : ''}>Latino (México)</option><option value="en" ${s.i === 'en' ? 'selected' : ''}>English</option><option value="ensub" ${s.i === 'ensub' ? 'selected' : ''}>English (sub. español)</option><option value="" ${!s.i ? 'selected' : ''}>Sin indicar</option></select><input class="sn" maxlength="30" placeholder="Nombre (opcional)" value="${esc(s.n || '')}"><button type="button" class="btn ghost sm srow-rm" aria-label="Quitar este servidor" title="Quitar">✕</button></div><input class="su" type="url" placeholder="Enlace del video (https)" value="${esc(s.u || '')}"><p class="muted sinfo"></p></div>`;
+  const srvRow = s => `<div class="srow"><div class="srow-top"><select class="si" aria-label="Idioma"><option value="lat" ${s.i === 'lat' ? 'selected' : ''}>Latino (México)</option><option value="en" ${s.i === 'en' ? 'selected' : ''}>English</option><option value="ensub" ${s.i === 'ensub' ? 'selected' : ''}>English (sub. español)</option><option value="" ${!s.i ? 'selected' : ''}>Sin indicar</option></select><input class="sn" maxlength="30" placeholder="Nombre (opcional)" value="${esc(s.n || '')}"><button type="button" class="btn ghost sm srow-rm" aria-label="Quitar este servidor" title="Quitar">✕</button></div><input class="su" type="url" placeholder="Enlace del video (https)" value="${esc(s.u || '')}"><p class="muted sinfo"></p></div>`;
 
   async function adminPage() {
     setNav('admin');
@@ -1121,13 +1118,10 @@ import { Cloud } from './auth.js';
           <label>Calificación (0–10)<input name="calificacion" inputmode="decimal" maxlength="4" value="${v('calificacion')}"></label>
         </div>
         <label>Género(s) <small class="muted">separados por coma; solo el primero cuenta: es la categoría única de la película</small><input name="generos" maxlength="120" value="${v('generos')}"></label>
-        <fieldset class="calfs"><legend>Calidades disponibles <small class="muted">marca todas las que tenga; se ven en la portada</small></legend>
-          ${CALIDADES.map(c => `<label class="chk"><input type="checkbox" name="cal" value="${c}" ${cur && qualsOf(cur).includes(c) ? 'checked' : ''}> <span>${c}</span></label>`).join('')}
-        </fieldset>
         <label>Sinopsis<textarea name="sinopsis" rows="4" maxlength="1500">${v('sinopsis')}</textarea></label>
         <fieldset class="srvs"><legend>Servidores de video *</legend>
-          <p class="muted" style="font-size:.84rem">Agrega uno o más servidores. Bajo el video se muestran de la mayor calidad (1080p) a la menor (720p), con la bandera del idioma. Enlaces: YouTube, Vimeo, Dailymotion, Google Drive, Streamable, Odysee, Rumble, Bunny, Cloudflare, Internet Archive, .mp4/.webm/.m3u8 o un sitio autorizado en config.js (https).</p>
-          <div id="srvlist">${(cur && serversOf(cur).length ? serversOf(cur) : [{ q: '1080p', i: 'lat', n: '', u: '' }]).map(srvRow).join('')}</div>
+          <p class="muted" style="font-size:.84rem">Agrega uno o más servidores. Bajo el video se muestran en HD, cada uno con la bandera de su idioma. Enlaces: YouTube, Vimeo, Dailymotion, Google Drive, Streamable, Odysee, Rumble, Bunny, Cloudflare, Internet Archive, .mp4/.webm/.m3u8 o un sitio autorizado en config.js (https).</p>
+          <div id="srvlist">${(cur && serversOf(cur).length ? serversOf(cur) : [{ q: 'HD', i: 'lat', n: '', u: '' }]).map(srvRow).join('')}</div>
           <button type="button" class="btn ghost sm" id="addsrv">＋ Agregar servidor</button>
         </fieldset>
         <label>Subtítulos <small class="muted">opcional; uno por línea: Idioma | enlace al .srt o .vtt (https, o ruta dentro de tu sitio como subs/es.srt). La persona decide si los activa.</small><textarea name="subtitulos" rows="3" placeholder="Español | subs/mi-pelicula-es.srt">${esc(linesOf(cur?.subtitulos))}</textarea></label>
@@ -1169,10 +1163,7 @@ import { Cloud } from './auth.js';
       const val = row.querySelector('.su').value.trim(), s = val ? parseSource(val) : null;
       row.querySelector('.sinfo').textContent = !val ? '' : s ? '✓ Detectado: ' + (s.tipo === 'embed' ? 'reproductor de ' + s.host : NOMBRES[s.tipo]) : '✗ Enlace no reconocido. Debe ser https y de un sitio compatible o autorizado en config.js (EMBED_HOSTS).';
     };
-    // Al elegir una calidad en un servidor, se marca también en "Calidades disponibles"
-    const syncCal = () => list_.querySelectorAll('.srow').forEach(r => { if (!r.querySelector('.su').value.trim()) return; const c = f.querySelector(`[name=cal][value="${r.querySelector('.sq').value}"]`); if (c) c.checked = true; });
-    list_.addEventListener('input', e => { const row = e.target.closest('.srow'); if (row) { updRow(row); syncCal(); } });
-    list_.addEventListener('change', e => { if (e.target.classList.contains('sq')) syncCal(); });
+    list_.addEventListener('input', e => { const row = e.target.closest('.srow'); if (row) updRow(row); });
     list_.addEventListener('click', e => {
       const b = e.target.closest('.srow-rm'); if (!b) return;
       const rows = list_.querySelectorAll('.srow');
@@ -1181,7 +1172,7 @@ import { Cloud } from './auth.js';
     document.getElementById('addsrv').onclick = () => {
       if (list_.querySelectorAll('.srow').length >= 12) return toast('Máximo 12 servidores por película.');
       const last = list_.querySelector('.srow:last-child');
-      list_.insertAdjacentHTML('beforeend', srvRow({ q: last ? last.querySelector('.sq').value : '1080p', i: last ? last.querySelector('.si').value : 'lat', n: '', u: '' }));
+      list_.insertAdjacentHTML('beforeend', srvRow({ q: 'HD', i: last ? last.querySelector('.si').value : 'lat', n: '', u: '' }));
       list_.querySelector('.srow:last-child .su').focus();
     };
     list_.querySelectorAll('.srow').forEach(updRow);
@@ -1202,12 +1193,12 @@ import { Cloud } from './auth.js';
       e.preventDefault();
       const g = n => f.elements[n].value.trim();
       const modo = f.elements.modo.value, bor = modo === 'borrador';
-      const rows = [...list_.querySelectorAll('.srow')].map(r => ({ q: nq(r.querySelector('.sq').value), i: r.querySelector('.si').value, n: r.querySelector('.sn').value.trim().slice(0, 30), u: r.querySelector('.su').value.trim() })).filter(x => x.u);
+      const rows = [...list_.querySelectorAll('.srow')].map(r => ({ q: 'HD', i: r.querySelector('.si').value, n: r.querySelector('.sn').value.trim().slice(0, 30), u: r.querySelector('.su').value.trim() })).filter(x => x.u);
       if (!bor && !rows.length) return toast('Agrega al menos un servidor con el enlace del video.');
       if (rows.some(x => !parseSource(x.u))) return toast('Hay un enlace de video no compatible. Usa YouTube, Vimeo, Dailymotion, Google Drive, Streamable, Odysee, Rumble, Bunny, Cloudflare Stream, Internet Archive, un .mp4/.webm/.m3u8, o autoriza tu sitio en config.js (EMBED_HOSTS).');
       const sorted = serversOf({ servidores: rows });
       const mainUrl = sorted[0] ? sorted[0].u : '';
-      const calidades = CALIDADES.filter(c => f.querySelector(`[name=cal][value="${c}"]`).checked || rows.some(x => x.q === c));
+      const calidades = ['HD'];
       if (!bor && !g('licencia')) return toast('Elige la licencia.');
       let when = 0;
       if (modo === 'programar') { when = new Date(g('cuando')).getTime(); if (!(when > Date.now() + 60000)) return toast('Elige una fecha y hora futuras para programar.'); }
