@@ -522,7 +522,7 @@ import { Cloud } from './auth.js';
       r1.innerHTML = rowLocal('Top Semanales', sem);
       r2.innerHTML = rowLocal('10 más votadas', votadas);
     });
-    // Carrusel: rota solo cada 10 s; se pausa al pasar el mouse o con la pestaña oculta
+    // Carrusel: rota solo cada 8 s; se pausa al pasar el mouse o con la pestaña oculta
     const sl = document.getElementById('slider'), sd = [...sl.querySelectorAll('.slide')], dt = [...sl.querySelectorAll('.dots button')];
     let cur = 0, tm, hold = false;
     // Las imágenes grandes de las demás diapositivas se piden solo cuando están por mostrarse (la página carga más rápido)
@@ -533,9 +533,20 @@ import { Cloud } from './auth.js';
       sd.forEach((x, k) => { x.classList.toggle('on', k === cur); if (k === cur) x.removeAttribute('aria-hidden'); else x.setAttribute('aria-hidden', 'true'); });
       dt.forEach((x, k) => x.classList.toggle('on', k === cur));
     };
-    const auto = () => { clearInterval(tm); if (sd.length > 1) tm = setInterval(() => { if (!document.body.contains(sl)) clearInterval(tm); else if (!hold && document.visibilityState === 'visible') show(cur + 1); }, 10000); };
-    sl.addEventListener('mouseenter', () => { hold = true; });
-    sl.addEventListener('mouseleave', () => { hold = false; });
+    const auto = () => { clearInterval(tm); if (sd.length > 1) tm = setInterval(() => { if (!document.body.contains(sl)) clearInterval(tm); else if (!hold && document.visibilityState === 'visible') show(cur + 1); }, 8000); };
+    // Con ratón se pausa al pasar el cursor; con el dedo se pausa solo mientras se toca (en el celular el "mouseenter" se queda pegado)
+    const fine = window.matchMedia && matchMedia('(hover:hover) and (pointer:fine)').matches;
+    if (fine) { sl.addEventListener('mouseenter', () => { hold = true; }); sl.addEventListener('mouseleave', () => { hold = false; }); }
+    // Deslizar con el dedo: izquierda = siguiente, derecha = anterior
+    let tx = 0, ty = 0, tt = 0;
+    sl.addEventListener('touchstart', e => { const t = e.touches[0]; tx = t.clientX; ty = t.clientY; tt = Date.now(); hold = true; }, { passive: true });
+    sl.addEventListener('touchend', e => {
+      hold = false;
+      const t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.4 && Date.now() - tt < 800) { show(cur + (dx < 0 ? 1 : -1)); }
+      auto();
+    }, { passive: true });
+    sl.addEventListener('touchcancel', () => { hold = false; }, { passive: true });
     const prev = sl.querySelector('.prev'), next = sl.querySelector('.next');
     if (prev) prev.onclick = () => { show(cur - 1); auto(); };
     if (next) next.onclick = () => { show(cur + 1); auto(); };
@@ -1097,12 +1108,6 @@ import { Cloud } from './auth.js';
           <button class="btn ghost sm" data-rres="${esc(r.id)}">Marcar como resuelto</button>
         </div>`).join('')}
       </section>` : ''}
-      <section class="panel wide">
-        <h2>Buscar películas de dominio público (Internet Archive)</h2>
-        <form class="newlist" id="as"><input name="q" placeholder="Ej. Nosferatu, Metropolis, cine mudo…"><button class="btn sm">Buscar</button></form>
-        <div id="ares"></div>
-        <p class="muted" style="font-size:.82rem;margin-top:10px">Verifica la licencia en la página de cada película antes de publicarla.</p>
-      </section>
       ${hasTmdb() ? `<section class="panel wide">
         <h2>Autocompletar datos desde TMDB (opcional)</h2>
         <form class="newlist" id="ts"><input name="q" placeholder="Título de la película…"><button class="btn sm">Buscar</button></form>
@@ -1312,43 +1317,6 @@ import { Cloud } from './auth.js';
       });
     }
 
-    // Buscador de dominio público (Internet Archive)
-    document.getElementById('as').addEventListener('submit', async e => {
-      e.preventDefault();
-      const q = e.target.q.value.trim();
-      if (!q) return;
-      const box = document.getElementById('ares');
-      box.innerHTML = '<p class="muted">Buscando…</p>';
-      try {
-        const qq = `(${q.replace(/[()"]/g, ' ')}) AND collection:feature_films AND mediatype:movies`;
-        const u = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(qq)}&fl[]=identifier&fl[]=title&fl[]=year&sort[]=downloads+desc&rows=12&output=json`;
-        const docs = (await (await fetch(u)).json()).response.docs;
-        box.innerHTML = docs.length
-          ? docs.map(d => `<div class="arow"><span><b>${esc(d.title)}</b> <span class="muted">${esc(d.year || '')}</span></span><button class="btn ghost sm" data-use="${esc(d.identifier)}">Usar</button></div>`).join('')
-          : '<p class="muted">Sin resultados.</p>';
-      } catch (err) { box.innerHTML = '<p class="muted">No se pudo buscar en Internet Archive.</p>'; }
-    });
-    document.getElementById('ares').addEventListener('click', async e => {
-      const b = e.target.closest('[data-use]');
-      if (!b) return;
-      const id = b.dataset.use;
-      try {
-        const md = (await (await fetch(`https://archive.org/metadata/${encodeURIComponent(id)}`)).json()).metadata || {};
-        const one = x => Array.isArray(x) ? x[0] : x;
-        const desc = new DOMParser().parseFromString(one(md.description) || '', 'text/html').body.textContent.trim().slice(0, 900);
-        const lic = String(one(md.licenseurl) || '');
-        set('titulo', one(md.title) || id);
-        set('anio', String(one(md.year) || '').slice(0, 4));
-        set('sinopsis', desc);
-        set('poster', `https://archive.org/services/img/${encodeURIComponent(id)}`);
-        set('url', `https://archive.org/details/${id}`);
-        if (/publicdomain/i.test(lic)) { set('licencia', 'publico'); set('creditos', 'Dominio público · Internet Archive'); }
-        else if (/creativecommons/i.test(lic)) { set('licencia', 'cc'); set('creditos', lic); }
-        else { set('licencia', ''); set('creditos', 'Internet Archive'); toast('Verifica la licencia en Internet Archive antes de publicar.'); }
-        upd();
-        f.scrollIntoView({ behavior: 'smooth' });
-      } catch (err) { toast('No se pudieron leer los datos de esa película.'); }
-    });
 
     // Autocompletar desde TMDB (solo si hay clave)
     const ts = document.getElementById('ts');
