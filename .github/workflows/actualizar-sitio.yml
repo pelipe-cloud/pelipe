@@ -1,9 +1,9 @@
 # Actualiza catalogo.json, las páginas de cada película y el sitemap con lo publicado en Firestore.
-# Corre solo cada hora y también a mano: pestaña "Actions" → "Actualizar sitio" → "Run workflow".
+# Corre solo cada 15 minutos y también a mano: pestaña "Actions" → "Actualizar sitio" → "Run workflow".
 name: Actualizar sitio
 on:
   schedule:
-    - cron: '17 * * * *'
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
 permissions:
   contents: write
