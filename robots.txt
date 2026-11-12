@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://pelipe-cloud.github.io/pelipe/sitemap.xml
+Sitemap: https://pelipe.online/sitemap.xml
