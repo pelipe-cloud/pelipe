@@ -15,7 +15,7 @@ FIREBASE: {
   ADMIN_EMAILS: ["pelipedesoporte@gmail.com"],            // ej. ["tucorreo@gmail.com"]
   // Dirección pública del sitio, sin barra final (ej. "https://tuusuario.github.io/pelipe" o tu dominio propio).
   // Sirve para sitemap.xml, enlaces canónicos y vistas previas. En GitHub Actions se deduce sola si la dejas vacía.
-  SITE_URL: "https://pelipe-cloud.github.io/pelipe",
+  SITE_URL: "https://pelipe.online",
   // Sitios extra desde donde se puede incrustar el reproductor de una película (solo los que tú pongas aquí).
   // Escribe el dominio, ej. ["miservidor.com", "videos.miescuela.edu"]; sirve cualquier enlace https de ese dominio
   // que permita ser incrustado en un iframe. Se incrusta con permisos reducidos. Publica solo contenido con derechos.
