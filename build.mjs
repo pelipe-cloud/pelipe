@@ -200,7 +200,7 @@ const block = [
   SITE ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Pelipe.pm', url: SITE + '/', inLanguage: 'es' })}</script>` : ''
 ].filter(Boolean).join('\n  ');
 html = html.replace(/<!--build:head-->[\s\S]*?<!--\/build:head-->/, `<!--build:head-->\n  ${block}\n  <!--/build:head-->`);
-if (SITE) html = html.replace(/(property="og:image" content=")[^"]*(")/, `$1${SITE}/og.png$2`);
+if (SITE) html = html.replace(/(property="og:image" content=")[^"]*(")/, `$1${SITE}/og.jpg$2`);
 wr('index.html', html);
 
 console.log(`Listo: ${all.length} película(s) en catalogo.json, ${pub.length} página(s) en p/${SITE ? ', sitemap.xml y robots.txt' : ''}.`);
