@@ -278,7 +278,7 @@ import { Cloud } from './auth.js';
     if (s.tipo === 'vimeo') return frame(`https://player.vimeo.com/video/${s.id}${s.hash ? '?h=' + s.hash : ''}`);
     if (s.tipo === 'archive') return frame(`https://archive.org/embed/${encodeURIComponent(s.id)}`);
     const p = httpsUrl(poster) ? ` poster="${esc(poster)}"` : '';
-    return `<div class="player"><video controls playsinline preload="metadata"${p} ${s.tipo === 'hls' ? `data-hls="${esc(s.url)}"` : `src="${esc(s.url)}"`}></video></div>`;
+    return `<div class="player"><video controls controlslist="nodownload" playsinline preload="metadata"${p} ${s.tipo === 'hls' ? `data-hls="${esc(s.url)}"` : `src="${esc(s.url)}"`}></video></div>`;
   }
   // Enlaces auxiliares (subtítulos): https o ruta relativa del propio sitio, p. ej. subs/es.srt
   const safeAsset = u => {
