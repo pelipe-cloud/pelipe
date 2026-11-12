@@ -270,6 +270,8 @@ import { Cloud } from './auth.js';
     if (extra.some(x => h === x || h.endsWith('.' + x))) return { tipo: 'embed', src: u.href, host: h, sandbox: true };
     return null;
   }
+  // Imagen del reproductor en pausa: la imagen horizontal de fondo (cubre el reproductor); si no hay, el póster
+  const coverOf = p => httpsUrl(p.fondo) ? tmdbImg(p.fondo, SMALL ? 780 : 1280) : p.poster;
   function playerHtml(s, poster) {
     if (!s) return '<p class="empty">El enlace de este video no es válido.</p>';
     const frame = (u, sb) => `<div class="player${/^https:\/\/drive\.google\.com\//.test(u) ? ' tall' : ''}"><iframe src="${esc(u)}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen ${sb ? 'sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"' : ''} referrerpolicy="strict-origin-when-cross-origin" title="Reproductor"></iframe></div>`;
@@ -929,7 +931,7 @@ import { Cloud } from './auth.js';
       app.innerHTML = `<div class="theater"><div class="theater-in">
         <h1 class="t-title">${esc(p.titulo)} ${p.anio ? `<small class="muted">(${esc(p.anio)})</small>` : ''}</h1>
         ${live ? '' : `<div class="notice slim"><p><b>Vista previa.</b> ${draft ? 'Este es un borrador: solo tú puedes verlo.' : 'Programada para el ' + esc(new Date(p.publicarEn).toLocaleString('es', { dateStyle: 'long', timeStyle: 'short' })) + '; hasta entonces solo tú puedes verla.'}</p></div>`}
-        ${playerHtml(parseSource(first), p.poster)}
+        ${playerHtml(parseSource(first), coverOf(p))}
         <div class="resume" id="resume" hidden></div>
         <div class="pbar" id="pbar" hidden></div>
         ${srvPanel}
@@ -963,7 +965,7 @@ import { Cloud } from './auth.js';
         if (leave) { try { leave(); } catch { } leave = null; }
         if (old) { if (old._st && old._st.hls) old._st.hls.destroy(); old.pause(); old.removeAttribute('src'); old.load(); }
         const tmp = document.createElement('div');
-        tmp.innerHTML = playerHtml(parseSource(s.u), p.poster);
+        tmp.innerHTML = playerHtml(parseSource(s.u), coverOf(p));
         app.querySelector('.player').replaceWith(tmp.firstElementChild);
         curSrv = k;
         app.querySelectorAll('#servers .srv').forEach(b => b.classList.toggle('on', Number(b.dataset.k) === k));
