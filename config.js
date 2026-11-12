@@ -19,7 +19,7 @@ FIREBASE: {
   // Sitios extra desde donde se puede incrustar el reproductor de una película (solo los que tú pongas aquí).
   // Escribe el dominio, ej. ["miservidor.com", "videos.miescuela.edu"]; sirve cualquier enlace https de ese dominio
   // que permita ser incrustado en un iframe. Se incrusta con permisos reducidos. Publica solo contenido con derechos.
-  EMBED_HOSTS: ["https://bysedikamoum.com", "https://filemoon.org/es", "https://filemoon.org/en", "https://n1mwq.org", "https://morencius.com", "https://ok.ru", "//ok.ru"],
+  EMBED_HOSTS: ["https://bysedikamoum.com", "https://filemoon.org/es", "https://filemoon.org/en", "https://n1mwq.org", "https://morencius.com", "https://ok.ru", "//ok.ru", "https://voe.sx"],
   // Correo para que titulares de derechos pidan retirar un título (se muestra en el pie de página).
   CONTACT_EMAIL: "pelipepubs@gmail.com",
 
