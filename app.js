@@ -378,8 +378,16 @@ import { Cloud } from './auth.js';
       const parts = [];
       if (ui.subs.length) parts.push(`<label>Subtítulos <select id="selsub"><option value="-1">Desactivados</option>${ui.subs.map((s, i) => `<option value="${i}">${esc(s.n)}</option>`).join('')}</select></label>`);
       if (ui.audios.length > 1) parts.push(`<label>Audio <select id="selaud">${ui.audios.map((a, i) => `<option value="${i}">${esc(a.n)}</option>`).join('')}</select></label>`);
+      // Enviar a la TV: Chromecast (Chrome/Edge, Remote Playback API). Safari trae AirPlay propio. Solo para videos directos (.mp4/.webm), no HLS por MSE
+      const castOk = !!v.remote && !v.webkitShowPlaybackTargetPicker && !(v.src || '').startsWith('blob:'); // Safari ya trae su icono de AirPlay en los controles
+      if (castOk) parts.push('<button type="button" id="btncast" class="btn ghost" title="Ver en la TV">📺 Ver en la TV</button>');
       bar.hidden = !parts.length;
       bar.innerHTML = parts.join('');
+      const bc = bar.querySelector('#btncast');
+      if (bc) bc.onclick = () => {
+        const t = v.remote.prompt();
+        Promise.resolve(t).catch(e => { if (e && e.name !== 'NotAllowedError' && e.name !== 'AbortError') toast('No se encontró ninguna TV o dispositivo cercano.'); });
+      };
       const ss = bar.querySelector('#selsub'), sa = bar.querySelector('#selaud');
       if (ss) { ss.value = String(ui.sub); ss.onchange = () => setSub(Number(ss.value)); }
       if (sa) { sa.value = String(ui.aud); sa.onchange = () => { ui.aud = Number(sa.value); ui.audios[ui.aud].apply(); }; }
@@ -399,6 +407,7 @@ import { Cloud } from './auth.js';
       renderBar();
     };
     v.addEventListener('loadedmetadata', nativeAudio);
+    renderBar();
 
     if (main && main.tipo === 'hls') {
       mountSource(v, main, st).then(() => {
