@@ -634,7 +634,7 @@ import { Cloud } from './auth.js';
       <p class="muted" style="max-width:70ch;margin-bottom:16px">Los estrenos más populares que se acercan, en cines y plataformas. Aún no están disponibles para ver en Pelipe.pm: es solo información.</p>
       <form class="filters"><select id="po"><option value="pop">Más populares</option><option value="fecha">Fecha de estreno</option></select></form>
       <div class="grid" id="pg"></div>
-      <p class="muted" style="font-size:.8rem;margin-top:26px">¡Prepara tus Palomitas, Crispetas, Pochoclos! 🍿</p></div>`;
+      <p class="muted" style="font-size:.8rem;margin-top:26px">Vía TMDB ¡Prepara tus Palomitas, Crispetas, Pochoclos! 🍿</p></div>`;
     let cur = l;
     const draw = () => { document.getElementById('pg').innerHTML = cur.map(card).join(''); };
     draw();
