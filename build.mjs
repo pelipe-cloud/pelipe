@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Pelipe.pm — genera los archivos estáticos del sitio a partir de las películas publicadas en Firestore.
+// Pelipe.online — genera los archivos estáticos del sitio a partir de las películas publicadas en Firestore.
 //   node build.mjs
 // Crea/actualiza:
 //   catalogo.json      → lo lee el inicio (cero lecturas de Firestore por visita)
@@ -74,11 +74,11 @@ const visible = p => !p.publicarEn || p.publicarEn <= Date.now();
 const safeId = id => /^[A-Za-z0-9_-]+$/.test(id);
 
 // --- página de una película ---
-const logo = (rd('index.html').match(/<a class="logo"[\s\S]*?<\/a>/) || ['<a class="logo" href="#/">Pelipe.pm</a>'])[0].replace(/href="[^"]*"/, 'href="../../"');
+const logo = (rd('index.html').match(/<a class="logo"[\s\S]*?<\/a>/) || ['<a class="logo" href="#/">Pelipe.online</a>'])[0].replace(/href="[^"]*"/, 'href="../../"');
 
 function page(p) {
-  const title = `${p.titulo}${p.anio ? ` (${p.anio})` : ''} — Ver película | Pelipe.pm`;
-  const desc = cut(p.sinopsis, 155) || `Mira “${p.titulo}” completa en Pelipe.pm.`;
+  const title = `${p.titulo}${p.anio ? ` (${p.anio})` : ''} — Ver película | Pelipe.online`;
+  const desc = cut(p.sinopsis, 155) || `Mira “${p.titulo}” completa en Pelipe.online.`;
   const img = https(p.poster) || https(p.fondo);
   const url = SITE ? `${SITE}/p/${encodeURIComponent(p.id)}/` : '';
   const play = `../../#/ver/${encodeURIComponent(p.id)}`;
@@ -100,7 +100,7 @@ function page(p) {
 <meta name="description" content="${esc(desc)}">
 ${url ? `<link rel="canonical" href="${esc(url)}">\n<meta property="og:url" content="${esc(url)}">` : ''}
 <meta property="og:type" content="video.movie">
-<meta property="og:site_name" content="Pelipe.pm">
+<meta property="og:site_name" content="Pelipe.online">
 <meta property="og:title" content="${esc(p.titulo)}${p.anio ? ` (${esc(p.anio)})` : ''}">
 <meta property="og:description" content="${esc(desc)}">
 ${img ? `<meta property="og:image" content="${esc(img)}">` : ''}
@@ -126,7 +126,7 @@ ${p.creditos ? `<p class="lic">${esc(p.creditos)}</p>` : ''}
 </div>
 </article>
 </main>
-<footer><div class="foot-l"><p>Pelipe.pm es un proyecto personal sin fines de lucro. Todas las películas publicadas son obras propias, de dominio público o con licencia libre.</p></div></footer>
+<footer><div class="foot-l"><p>Pelipe.online es un proyecto personal sin fines de lucro. Todas las películas publicadas son obras propias, de dominio público o con licencia libre.</p></div></footer>
 </body>
 </html>
 `;
@@ -196,8 +196,11 @@ const hero = first && (https(first.fondo) || https(first.poster));
 const block = [
   SITE ? `<link rel="canonical" href="${SITE}/">\n  <meta property="og:url" content="${SITE}/">` : '',
   '<link rel="preload" href="catalogo.json" as="fetch" crossorigin="anonymous">',
-  hero ? `<link rel="preload" href="${esc(hero)}" as="image" fetchpriority="high">` : '',
-  SITE ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Pelipe.pm', url: SITE + '/', inLanguage: 'es' })}</script>` : ''
+  // Portada: en el celular se precarga la versión de 780 px (la misma que usa app.js); en pantallas grandes, la de 1280 px
+  hero ? (/image\.tmdb\.org\/t\/p\/w\d+\//.test(hero)
+    ? `<link rel="preload" href="${esc(hero.replace(/\/t\/p\/w\d+\//, '/t/p/w780/'))}" as="image" fetchpriority="high" media="(max-width: 900px)">\n  <link rel="preload" href="${esc(hero.replace(/\/t\/p\/w\d+\//, '/t/p/w1280/'))}" as="image" fetchpriority="high" media="(min-width: 901px)">`
+    : `<link rel="preload" href="${esc(hero)}" as="image" fetchpriority="high">`) : '',
+  SITE ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Pelipe.online', url: SITE + '/', inLanguage: 'es' })}</script>` : ''
 ].filter(Boolean).join('\n  ');
 html = html.replace(/<!--build:head-->[\s\S]*?<!--\/build:head-->/, `<!--build:head-->\n  ${block}\n  <!--/build:head-->`);
 if (SITE) html = html.replace(/(property="og:image" content=")[^"]*(")/, `$1${SITE}/og.jpg$2`);

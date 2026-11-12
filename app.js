@@ -202,7 +202,10 @@ import { Cloud } from './auth.js';
   const needCloud = () => '<div class="notice"><h2>Falta activar la nube</h2><p>Las películas se guardan en Firebase. Configura <code>FIREBASE</code> en <code>config.js</code> (pasos en el README).</p></div>';
   const failCloud = e => { app.innerHTML = `<div class="notice"><h2>No se pudo cargar el catálogo</h2><p>${esc(e.code || e.message)}</p></div>`; };
 
-  const cardLocal = p => `<a class="card" href="#/ver/${encodeURIComponent(p.id)}"><div class="poster">${httpsUrl(p.poster) ? `<img loading="lazy" src="${esc(p.poster)}" alt="${esc(p.titulo)}">` : ''}<i class="pl" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8.5 5.6v12.8a.8.8 0 0 0 1.2.7l10.2-6.4a.8.8 0 0 0 0-1.4L9.7 4.9a.8.8 0 0 0-1.2.7z"/></svg></i>${gensOf(p)[0] ? `<div class="badge">${esc(cap(gensOf(p)[0]))}</div>` : ''}${qualsOf(p).length ? `<div class="qs">${qBadges(p)}</div>` : ''}${p.pct ? `<div class="prog"><i style="width:${Math.max(4, Math.min(100, Math.round(p.pct)))}%"></i></div>` : ''}${p.rank ? `<div class="rank">${p.rank}</div>` : ''}</div><b>${esc(p.titulo)}</b><span>${esc(p.anio || '')}${p.votos ? ` · ♥ ${p.votos}` : ''}</span></a>`;
+  // Imágenes de TMDB al tamaño que se necesita (en el celular, más pequeñas = carga más rápida)
+  const SMALL = !!(window.matchMedia && matchMedia('(max-width: 900px)').matches);
+  const tmdbImg = (u, w) => /^https:\/\/image\.tmdb\.org\/t\/p\/w\d+\//.test(u || '') ? u.replace(/\/t\/p\/w\d+\//, `/t/p/w${w}/`) : u;
+  const cardLocal = p => `<a class="card" href="#/ver/${encodeURIComponent(p.id)}"><div class="poster">${httpsUrl(p.poster) ? `<img loading="lazy" src="${esc(tmdbImg(p.poster, SMALL ? 342 : 500))}" alt="${esc(p.titulo)}">` : ''}<i class="pl" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8.5 5.6v12.8a.8.8 0 0 0 1.2.7l10.2-6.4a.8.8 0 0 0 0-1.4L9.7 4.9a.8.8 0 0 0-1.2.7z"/></svg></i>${gensOf(p)[0] ? `<div class="badge">${esc(cap(gensOf(p)[0]))}</div>` : ''}${qualsOf(p).length ? `<div class="qs">${qBadges(p)}</div>` : ''}${p.pct ? `<div class="prog"><i style="width:${Math.max(4, Math.min(100, Math.round(p.pct)))}%"></i></div>` : ''}${p.rank ? `<div class="rank">${p.rank}</div>` : ''}</div><b>${esc(p.titulo)}</b><span>${esc(p.anio || '')}${p.votos ? ` · ♥ ${p.votos}` : ''}</span></a>`;
   const rowLocal = (title, items, link) => items.length ? `<section class="row"><div class="row-h"><h2>${esc(title)}</h2>${link ? `<a href="${link}">Ver todo →</a>` : ''}</div><div class="scroller">${items.map(cardLocal).join('')}</div></section>` : '';
   const gridLocal = items => `<div class="grid">${items.map(cardLocal).join('')}</div>`;
   const gridRm = (items, attrs) => `<div class="grid">${items.map(p => `<div class="rm-wrap">${cardLocal(p)}<button class="rm" data-id="${esc(p.id)}" ${attrs}>Quitar</button></div>`).join('')}</div>`;
@@ -489,7 +492,7 @@ import { Cloud } from './auth.js';
     const shuffle = a => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
     app.innerHTML = `
       <section class="hero slider" id="slider" aria-roledescription="carrusel" aria-label="Películas recientes">
-        ${slides.map((f, i) => { const bg = httpsUrl(f.fondo) || httpsUrl(f.poster); return `<article class="slide ${i === 0 ? 'on' : ''}" ${i ? 'aria-hidden="true"' : ''}>
+        ${slides.map((f, i) => { const bg = httpsUrl(f.fondo) ? tmdbImg(f.fondo, SMALL ? 780 : 1280) : httpsUrl(f.poster); return `<article class="slide ${i === 0 ? 'on' : ''}" ${i ? 'inert' : ''}>
           ${bg ? `<div class="hero-bg ${httpsUrl(f.fondo) ? '' : 'blur'}" ${i === 0 ? `style="background-image:url('${esc(bg)}')"` : `data-bg="${esc(bg)}"`}></div>` : ''}
           <div class="hero-in">
             <span class="tag">${i === 0 ? 'Lo más nuevo' : 'Recién publicada'}</span>
@@ -530,7 +533,7 @@ import { Cloud } from './auth.js';
     const show = i => {
       cur = (i + sd.length) % sd.length;
       load(cur - 1); load(cur); load(cur + 1);
-      sd.forEach((x, k) => { x.classList.toggle('on', k === cur); if (k === cur) x.removeAttribute('aria-hidden'); else x.setAttribute('aria-hidden', 'true'); });
+      sd.forEach((x, k) => { x.classList.toggle('on', k === cur); x.inert = k !== cur; });
       dt.forEach((x, k) => x.classList.toggle('on', k === cur));
     };
     const auto = () => { clearInterval(tm); if (sd.length > 1) tm = setInterval(() => { if (!document.body.contains(sl)) clearInterval(tm); else if (!hold && document.visibilityState === 'visible') show(cur + 1); }, 8000); };
@@ -631,7 +634,7 @@ import { Cloud } from './auth.js';
     if (!l.length) { app.innerHTML = '<div class="wrap"><h1 style="margin-bottom:16px">Próximas</h1><p class="empty">Aún no hay estrenos cargados. Vuelve pronto.</p></div>'; return; }
     app.innerHTML = `<div class="wrap">
       <h1 style="margin-bottom:6px">Próximas</h1>
-      <p class="muted" style="max-width:70ch;margin-bottom:16px">Los estrenos más populares que se acercan, en cines y plataformas. Aún no están disponibles para ver en Pelipe.pm: es solo información.</p>
+      <p class="muted" style="max-width:70ch;margin-bottom:16px">Los estrenos más populares que se acercan, en cines y plataformas. Aún no están disponibles para ver en Pelipe.online: es solo información.</p>
       <form class="filters"><select id="po"><option value="pop">Más populares</option><option value="fecha">Fecha de estreno</option></select></form>
       <div class="grid" id="pg"></div>
       <p class="muted" style="font-size:.8rem;margin-top:26px">Vía TMDB ¡Prepara tus Palomitas, Crispetas, Pochoclos! 🍿</p></div>`;
@@ -652,7 +655,7 @@ import { Cloud } from './auth.js';
       const show = a => {
         const x = cur[Number(a.dataset.i)]; if (!x) return;
         const tr = trUrl(x);
-        pk.innerHTML = `<h4>${esc(x.titulo)}</h4><div class="peek-meta"><span>${esc(fdate(x, true))}</span><span class="peek-r" style="font-size:.85rem">${esc(when(x))}</span>${x.generos ? `<span class="chip">${esc(String(x.generos).split(',')[0].trim())}</span>` : ''}</div><p>${esc(x.sinopsis || 'Sin sinopsis disponible.')}</p>${tr ? '<button class="btn sm" id="pktr" type="button">▶ Ver tráiler</button>' : ''}<p class="peek-note">Solo información: esta película aún no está disponible para ver en Pelipe.pm.</p>`;
+        pk.innerHTML = `<h4>${esc(x.titulo)}</h4><div class="peek-meta"><span>${esc(fdate(x, true))}</span><span class="peek-r" style="font-size:.85rem">${esc(when(x))}</span>${x.generos ? `<span class="chip">${esc(String(x.generos).split(',')[0].trim())}</span>` : ''}</div><p>${esc(x.sinopsis || 'Sin sinopsis disponible.')}</p>${tr ? '<button class="btn sm" id="pktr" type="button">▶ Ver tráiler</button>' : ''}<p class="peek-note">Solo información: esta película aún no está disponible para ver en Pelipe.online.</p>`;
         pk.hidden = false;
         const r = a.getBoundingClientRect(), w = pk.offsetWidth, h = pk.offsetHeight;
         let px = r.right + 6; if (px + w > innerWidth - 8) px = r.left - w - 6; if (px < 8) px = Math.max(8, Math.min(innerWidth - w - 8, r.left));
@@ -678,7 +681,7 @@ import { Cloud } from './auth.js';
       if (desk) return; // en PC la información sale al pasar el cursor
       const x = cur[Number(a.dataset.i)]; if (!x) return;
       const tr = /^[\w-]{6,20}$/.test(x.trailer || '') ? `https://www.youtube.com/watch?v=${x.trailer}` : '';
-      openModal(`<div class="proximo"><h2>${esc(x.titulo)}</h2><p class="muted">${esc(fdate(x, true))} · ${esc(when(x))}${x.generos ? ' · ' + esc(x.generos) : ''}</p><p style="margin:12px 0">${esc(x.sinopsis || 'Sin sinopsis disponible.')}</p>${tr ? '<button class="btn" id="ptr" type="button">▶ Ver tráiler</button>' : ''}<p class="muted" style="font-size:.8rem;margin-top:12px">Solo información: esta película aún no está disponible para ver en Pelipe.pm.</p></div>`);
+      openModal(`<div class="proximo"><h2>${esc(x.titulo)}</h2><p class="muted">${esc(fdate(x, true))} · ${esc(when(x))}${x.generos ? ' · ' + esc(x.generos) : ''}</p><p style="margin:12px 0">${esc(x.sinopsis || 'Sin sinopsis disponible.')}</p>${tr ? '<button class="btn" id="ptr" type="button">▶ Ver tráiler</button>' : ''}<p class="muted" style="font-size:.8rem;margin-top:12px">Solo información: esta película aún no está disponible para ver en Pelipe.online.</p></div>`);
       const b = document.getElementById('ptr'); if (b) b.onclick = () => openTrailer(tr);
     });
   }
@@ -812,7 +815,7 @@ import { Cloud } from './auth.js';
   async function sharePage(p) {
     // Enlace a la página de la película (tiene vista previa con póster en WhatsApp/Facebook); si aún no existe, 404.html redirige al reproductor
     const url = new URL('p/' + encodeURIComponent(p.id) + '/', new URL('.', location.href)).href;
-    const text = `Mira “${p.titulo}” en Pelipe.pm`;
+    const text = `Mira “${p.titulo}” en Pelipe.online`;
     if (navigator.share && matchMedia('(pointer:coarse)').matches) {
       try { await navigator.share({ title: p.titulo, text, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
     }
@@ -893,12 +896,13 @@ import { Cloud } from './auth.js';
     loading();
     try {
       let p = null;
-      try { p = draft ? await Cloud.getBorrador(id) : await Cloud.getPelicula(id); } catch (e) { if (!draft) throw e; }
+      if (!draft && !canPublish()) { try { p = (await catalogRaw()).find(x => x.id === id) || null; } catch { } } // catálogo estático: no hace falta esperar a Firebase
+      if (!p) { try { p = draft ? await Cloud.getBorrador(id) : await Cloud.getPelicula(id); } catch (e) { if (!draft) throw e; } }
       const mine = canPublish() && p && (isAdmin() || p.por === user.email);
       if (!p || (draft && !mine) || (!draft && !visible(p) && !mine)) { app.innerHTML = '<div class="wrap"><p class="empty">No encontramos esta película.</p></div>'; return; }
       const live = !draft && visible(p); // borradores y programadas se ven como vista previa, sin reacciones ni compartir
       if (live) { recents.push(p); lastWatched = p.id; }
-      document.title = `${p.titulo} — Pelipe.pm`;
+      document.title = `${p.titulo} — Pelipe.online`;
       const gens = gensOf(p);
       const favLabel = () => isFav(p.id) ? '♥ En favoritas' : '♡ Favorita';
       let similar = [];
@@ -1400,7 +1404,7 @@ import { Cloud } from './auth.js';
     if (leave) { try { leave(); } catch { } leave = null; } // guarda el progreso de la película que se deja
     if (pager) { pager.disconnect(); pager = null; }
     closeModal();
-    document.title = 'Pelipe.pm — Películas libres para ver en español';
+    document.title = 'Pelipe.online — Películas libres para ver en español';
     const h = location.hash || '#/';
     for (const [re, fn] of routes) { const m = h.match(re); if (m) { fn(m); window.scrollTo(0, 0); return; } }
     home();
@@ -1433,7 +1437,7 @@ import { Cloud } from './auth.js';
       if (my !== seq) return;
       items = list.map(p => ({ p, s: score(p, q) })).filter(x => x.s >= 0).sort((a, b) => a.s - b.s || (a.p.titulo || '').localeCompare(b.p.titulo || '', 'es')).slice(0, 6).map(x => x.p);
       box.innerHTML = (items.length
-        ? items.map((p, i) => `<a class="sug" role="option" id="sug-${i}" aria-selected="false" href="#/ver/${encodeURIComponent(p.id)}">${httpsUrl(p.poster) ? `<img src="${esc(p.poster)}" alt="" loading="lazy">` : '<span class="sug-ph"></span>'}<span class="sug-t"><b>${esc(p.titulo)}</b><small>${esc([p.anio, gensOf(p)[0] && cap(gensOf(p)[0]), qualsOf(p).join(' · ')].filter(Boolean).join(' · '))}</small></span></a>`).join('')
+        ? items.map((p, i) => `<a class="sug" role="option" id="sug-${i}" aria-selected="false" href="#/ver/${encodeURIComponent(p.id)}">${httpsUrl(p.poster) ? `<img src="${esc(tmdbImg(p.poster, 154))}" alt="" loading="lazy">` : '<span class="sug-ph"></span>'}<span class="sug-t"><b>${esc(p.titulo)}</b><small>${esc([p.anio, gensOf(p)[0] && cap(gensOf(p)[0]), qualsOf(p).join(' · ')].filter(Boolean).join(' · '))}</small></span></a>`).join('')
         : '<p class="sug-none">No hay películas con ese nombre en el catálogo.</p>')
         + `<a class="sug-all" href="#/catalogo?q=${encodeURIComponent(raw)}">Ver todos los resultados para “${esc(raw)}”</a>`;
       box.hidden = false; inp.setAttribute('aria-expanded', 'true'); act = -1;
@@ -1524,9 +1528,14 @@ import { Cloud } from './auth.js';
   if (!Cloud.enabled) {
     route();
   } else {
-    loading();
+    // Las páginas públicas se pintan ya, con el catálogo estático, sin esperar a Firebase.
+    // Las que dependen de tu sesión (favoritas, listas, publicar, vista previa) esperan a saber quién eres.
+    const needsUser = /^#\/(favoritas|listas|admin|vista)/.test(location.hash);
+    if (needsUser) loading(); else route();
+    Cloud.ready.then(ok => { if (!ok) { renderAcct(); if (needsUser) route(); } }); // Firebase no cargó (bloqueado, sin red): las páginas públicas siguen con el catálogo estático
     let started = false;
     Cloud.onUser(async raw => {
+      const first = !started;
       startPresence(); // ya se conoce el estado de la sesión: evita crear una cuenta anónima encima de una de Google
       // Las sesiones anónimas (visitantes que reaccionan) no cuentan como "sesión iniciada".
       const u = raw && !raw.isAnonymous ? raw : null;
@@ -1557,6 +1566,8 @@ import { Cloud } from './auth.js';
         try { editor = await Cloud.isEditor(u.email.toLowerCase()); } catch (err) { editor = false; }
       }
       renderAcct();
+      // Un visitante sin sesión que está viendo inicio, catálogo o próximas ya tiene todo pintado: no se repite
+      if (first && !needsUser && !u && !editor && /^#?\/?(catalogo|proximas)?$/.test(location.hash)) return;
       route();
     });
   }

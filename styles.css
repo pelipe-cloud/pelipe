@@ -223,9 +223,11 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:fle
 .slide .hero-in{z-index:2;padding-bottom:64px}
 .hero .arrow{position:absolute;z-index:3;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:1.6rem;line-height:1}
 .hero .arrow:hover{background:var(--acc)}.hero .prev{left:12px}.hero .next{right:12px}
-.dots{position:absolute;z-index:3;left:0;right:0;bottom:20px;display:flex;justify-content:center;gap:8px}
-.dots button{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.35);padding:0}
-.dots button.on{background:var(--acc);width:26px;border-radius:6px}
+.dots{position:absolute;z-index:3;left:0;right:0;bottom:12px;display:flex;justify-content:center;gap:0}
+.dots button{position:relative;width:24px;height:24px;padding:0;background:none;border:0}
+.dots button::before{content:"";position:absolute;left:50%;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:rgba(255,255,255,.35)}
+.dots button.on{width:36px}
+.dots button.on::before{background:var(--acc);width:26px;margin-left:-13px;border-radius:6px}
 @media (max-width:760px){.hero .arrow{display:none}}
 .card .badge:not(.q){max-width:calc(100% - 70px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
@@ -439,3 +441,9 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:fle
   .srv-btns{justify-content:center;width:100%}
   .srv{justify-content:center}
 }
+
+/* enlaces del pie: zona táctil de al menos 24 px */
+footer a{display:inline-block;padding:5px 0}
+
+/* contraste: texto oscuro sobre el naranja (el blanco no llega a 4.5:1 y Google lo marca) */
+.tag,.card .badge.q,.chip.q,.srv-q,.btn:not(.ghost){color:#17110e}

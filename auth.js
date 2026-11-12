@@ -6,7 +6,10 @@ const cfg = (window.CONFIG || {}).FIREBASE;
 let enabled = !!(cfg && cfg.apiKey);
 let auth, db, fb = {};
 
-if (enabled) {
+// Firebase se carga en segundo plano: la página se pinta sin esperar a que termine (antes bloqueaba todo el sitio).
+// `ready` se resuelve en true cuando Firebase quedó listo, o en false si no pudo cargarse.
+const ready = (async () => {
+  if (!enabled) return false;
   try {
     const [app, a, f] = await Promise.all([
       import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
@@ -17,20 +20,24 @@ if (enabled) {
     auth = a.getAuth(inst);
     db = f.getFirestore(inst);
     fb = { ...a, ...f };
+    return true;
   } catch (e) {
     console.error('Firebase no pudo cargarse:', e);
     enabled = false;
+    return false;
   }
-}
+})();
 
 const listeners = [];
 
 export const Cloud = {
-  enabled,
-  onUser(cb) { listeners.push(cb); return fb.onAuthStateChanged(auth, cb); },
+  get enabled() { return enabled; },
+  ready,
+  onUser(cb) { listeners.push(cb); return ready.then(ok => ok ? fb.onAuthStateChanged(auth, cb) : undefined); },
   // Si la persona ya reaccionó como visitante (sesión anónima), se vincula su cuenta de Google
   // a esa misma sesión para conservar sus reacciones.
   async signIn() {
+    if (!fb.GoogleAuthProvider) await ready; // solo espera si Firebase aún no terminó de cargar
     const prov = new fb.GoogleAuthProvider();
     const cu = auth.currentUser;
     if (cu && cu.isAnonymous) {
@@ -131,3 +138,10 @@ export const Cloud = {
   addEditor(email, por) { return fb.setDoc(fb.doc(db, 'editores', email), { email, agregado: Date.now(), por }); },
   removeEditor(email) { return fb.deleteDoc(fb.doc(db, 'editores', email)); }
 };
+
+// Cualquier llamada a la nube espera a que Firebase esté listo (las que ya son síncronas se dejan igual)
+for (const k of Object.keys(Cloud)) {
+  const f = Cloud[k];
+  if (typeof f !== 'function' || ['onUser', 'currentUid', 'signIn'].includes(k)) continue;
+  Cloud[k] = async (...a) => { await ready; return f.apply(Cloud, a); };
+}

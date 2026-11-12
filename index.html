@@ -11,7 +11,7 @@
   <meta property="og:url" content="https://pelipe.online/">
   <link rel="preload" href="catalogo.json" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="https://image.tmdb.org/t/p/w1280/lV1P1Q5gLDXVG1ZYCxZHStkcQC3.jpg" as="image" fetchpriority="high">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Pelipe.pm","url":"https://pelipe.online/","inLanguage":"es"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Pelipe.online","url":"https://pelipe.online/","inLanguage":"es"}</script>
   <!--/build:head-->
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -28,7 +28,8 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap"></noscript>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -73,7 +74,7 @@
     </div>
   </footer>
 
-  <script src="config.js"></script>
+  <script src="config.js" defer></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
