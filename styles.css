@@ -448,3 +448,5 @@ footer a{display:inline-block;padding:5px 0}
 /* contraste: texto oscuro sobre el naranja (el blanco no llega a 4.5:1 y Google lo marca) */
 .tag,.card .badge.q,.chip.q,.srv-q,.btn:not(.ghost){color:#17110e}
 .logo-dom{font-size:.55em;letter-spacing:.06em;margin-left:.04em;align-self:flex-end;padding-bottom:.08em}
+/* Evita el salto del pie de página mientras carga el contenido (mejora CLS) */
+#app:empty,#app:has(>.wrap>.skel){min-height:100svh}
