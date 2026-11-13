@@ -474,6 +474,17 @@ import { Cloud } from './auth.js';
 
   /* ---------- páginas ---------- */
   // Conteo de reacciones por película (total y últimos 7 días) para los rankings del inicio
+  // Trabajo de segundo plano (conteos, presencia): se hace cuando la persona interactúa o pasan 20 s,
+  // para no saturar la red mientras se pinta la portada
+  const onActive = (() => {
+    const q = []; let fired = false;
+    const go = () => { if (fired) return; fired = true; q.splice(0).forEach(f => { try { f(); } catch { } }); };
+    ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach(ev => addEventListener(ev, go, { once: true, passive: true }));
+    setTimeout(go, 20000);
+    return f => fired ? f() : q.push(f);
+  })();
+  let rkPending = null;
+  const rankCached = () => { try { const c = JSON.parse(lsGet(LS_RANK)); return !!(c && c.tot && Date.now() - c.t < 1800000); } catch { return false; } };
   async function ranking(list) {
     try { const c = JSON.parse(lsGet(LS_RANK)); if (c && c.tot && Date.now() - c.t < 1800000) return c; } catch { }
     try {
@@ -526,7 +537,7 @@ import { Cloud } from './auth.js';
         <div id="rk2"></div>
       </div>`;
     // Rankings por reacciones: se rellenan cuando llegan los conteos (en caché 30 min)
-    ranking(list).then(rk => {
+    const fillRank = () => ranking(list).then(rk => {
       const r1 = document.getElementById('rk1'), r2 = document.getElementById('rk2');
       if (!rk || !r1 || !r2) return;
       const n = (id, k) => (rk[k] && rk[k][id]) || 0;
@@ -536,6 +547,8 @@ import { Cloud } from './auth.js';
       r1.innerHTML = rowLocal('Top Semanales', sem);
       r2.innerHTML = rowLocal('10 más votadas', votadas);
     });
+    rkPending = fillRank; // si la página se vuelve a dibujar antes de que se active, solo cuenta la última versión
+    if (rankCached()) fillRank(); else onActive(() => { if (rkPending === fillRank) fillRank(); });
     // Carrusel: rota solo cada 8 s; se pausa al pasar el mouse o con la pestaña oculta
     const sl = document.getElementById('slider'), sd = [...sl.querySelectorAll('.slide')], dt = [...sl.querySelectorAll('.dots button')];
     let cur = 0, tm, hold = false;
@@ -1530,9 +1543,11 @@ import { Cloud } from './auth.js';
   function startPresence() {
     if (presenceOn) return;
     presenceOn = true;
-    beat().then(refreshStats);
-    setInterval(() => { beat().then(refreshStats); }, 120000);
-    document.addEventListener('visibilitychange', beat);
+    onActive(() => {
+      beat().then(refreshStats);
+      setInterval(() => { beat().then(refreshStats); }, 120000);
+      document.addEventListener('visibilitychange', beat);
+    });
   }
 
   renderAcct();
