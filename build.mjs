@@ -128,7 +128,7 @@ ${p.creditos ? `<p class="lic">${esc(p.creditos)}</p>` : ''}
 </div>
 </article>
 </main>
-<footer><div class="foot-l"><p>Pelipe.online es un proyecto personal sin fines de lucro. Todas las películas publicadas son obras propias, de dominio público o con licencia libre.</p></div></footer>
+<footer><div class="foot-l"><p>Pelipe.online es un proyecto personal sin fines de lucro. Todas las películas y series publicadas son obras propias, de dominio público o con licencia libre.</p></div></footer>
 </body>
 </html>
 `;

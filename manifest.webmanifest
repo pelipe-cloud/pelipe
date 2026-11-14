@@ -1,7 +1,7 @@
 {
   "name": "Pelipe.online",
   "short_name": "Pelipe",
-  "description": "Películas libres para ver en español.",
+  "description": "Películas y series libres para ver en español.",
   "lang": "es",
   "start_url": "./",
   "scope": "./",

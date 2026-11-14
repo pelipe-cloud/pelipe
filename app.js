@@ -1562,7 +1562,7 @@ import { Cloud } from './auth.js';
     if (leave) { try { leave(); } catch { } leave = null; } // guarda el progreso de la película que se deja
     if (pager) { pager.disconnect(); pager = null; }
     closeModal();
-    document.title = 'Pelipe.online — Películas libres para ver en español';
+    document.title = 'Pelipe.online — Películas y series libres para ver en español';
     const h = location.hash || '#/';
     for (const [re, fn] of routes) { const m = h.match(re); if (m) { fn(m); window.scrollTo(0, 0); return; } }
     home();
