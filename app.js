@@ -1076,14 +1076,20 @@ import { Cloud } from './auth.js';
     if (!Cloud.enabled) { location.replace('#/'); return; }
     loading();
     try {
-      const list = await catalog();
-      if (!list.length) { location.replace('#/'); return; }
+      const films = await catalog();
+      let sers = []; try { sers = (await seriesCat()).filter(x => countEps(x) > 0); } catch { } // solo series que ya tienen episodios
+      if (!films.length && !sers.length) { location.replace('#/'); return; }
       const seen = new Set(recents.get().map(String));
       const not = x => String(x.id) !== String(lastWatched);
-      let pool = list.filter(x => not(x) && !seen.has(String(x.id)));
-      if (!pool.length) pool = list.filter(not);
-      if (!pool.length) pool = list;
-      location.replace('#/ver/' + encodeURIComponent(pool[Math.floor(Math.random() * pool.length)].id));
+      const pick = list => {
+        let pool = list.filter(x => not(x) && !seen.has(String(x.id)));
+        if (!pool.length) pool = list.filter(not);
+        if (!pool.length) pool = list;
+        return pool[Math.floor(Math.random() * pool.length)];
+      };
+      // Equilibrado: primero se decide al azar entre película y serie (50/50), luego se elige una de ese tipo
+      const useSerie = sers.length && (!films.length || Math.random() < 0.5);
+      location.replace('#/ver/' + encodeURIComponent(pick(useSerie ? sers : films).id));
     } catch (e) { failCloud(e); }
   }
 
