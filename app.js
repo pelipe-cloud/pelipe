@@ -1238,7 +1238,7 @@ import { Cloud } from './auth.js';
         <h2>Autocompletar serie desde TMDB (opcional)</h2>
         <form class="newlist" id="tss"><input name="q" placeholder="Título de la serie…"><button class="btn sm">Buscar</button></form>
         <div id="tsres"></div>
-        <label style="display:block;margin-top:10px">Temporadas para generar la lista de episodios <small class="muted">vacío = todas; o escribe por ejemplo 2 o 1-3</small><input id="tsn" maxlength="30" placeholder="todas"></label>
+        <div class="pform"><label>Temporadas para generar la lista de episodios <small class="muted">vacío = todas; o escribe por ejemplo 2 o 1-3</small><input id="tsn" maxlength="30" placeholder="todas" autocomplete="off"></label></div>
         <p class="muted" style="font-size:.82rem;margin-top:10px">Rellena título, año, calificación, géneros, sinopsis, póster y fondo, y deja los episodios con sus títulos listos (una línea por episodio, sin enlace). Tú agregas el enlace del video de cada línea y confirmas la licencia.</p>
       </section>` : ''}
       <form id="sf" class="panel wide pform" autocomplete="off">
