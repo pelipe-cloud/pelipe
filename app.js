@@ -1565,8 +1565,24 @@ import { Cloud } from './auth.js';
           const all = (m.seasons || []).map(x => x.season_number).filter(n => n >= 1);
           const want = pickSeasons(document.getElementById('tsn').value, all);
           let note = '';
-          if (sf.elements.episodios.value.trim()) note = ' Ya tenías episodios escritos, no los toqué.';
-          else if (want.length) {
+          const cur = sf.elements.episodios.value;
+          if (cur.trim()) {
+            // Ya hay episodios escritos: se conservan los enlaces y solo se ponen los nombres oficiales donde el título falta o es genérico ("Episodio 3")
+            const rows = cur.split('\n');
+            const ts = [...new Set(rows.map(l => (l.trim().split('|')[0].trim().match(/^(?:s|t)?\s*(\d{1,2})\s*[xe]\s*\d{1,3}$/i) || [])[1]).filter(Boolean).map(Number))].filter(n => all.includes(n));
+            const seas = await Promise.all(ts.map(n => tmdb('/tv/' + m.id + '/season/' + n).catch(() => null)));
+            const names = new Map();
+            seas.forEach((t, i) => t && (t.episodes || []).forEach(x => names.set(ts[i] + 'x' + x.episode_number, String(x.name || '').replace(/\|/g, '-').trim())));
+            let n = 0;
+            sf.elements.episodios.value = rows.map(l => {
+              const c = l.split('|'), k = (c[0] || '').trim().match(/^(?:s|t)?\s*(\d{1,2})\s*[xe]\s*(\d{1,3})$/i);
+              if (!k || c.length < 4) return l;
+              const nm = names.get(Number(k[1]) + 'x' + Number(k[2])), old = (c[1] || '').trim();
+              if (!nm || (old && !/^episodio\s*\d+$/i.test(old))) return l;
+              n++; c[1] = ' ' + nm + ' '; return c.join('|');
+            }).join('\n');
+            note = n ? ` Puse el nombre oficial a ${n} episodio(s); los enlaces no cambiaron.` : ' Tus episodios ya tenían nombre; no cambié nada.';
+          } else if (want.length) {
             const seas = await Promise.all(want.map(n => tmdb('/tv/' + m.id + '/season/' + n).catch(() => null)));
             const lines = seas.flatMap((t, i) => t ? (t.episodes || []).map(x => `${want[i]}x${String(x.episode_number).padStart(2, '0')} | ${String(x.name || '').replace(/\|/g, '-').trim()} | lat | `) : []);
             setS('episodios', lines.join('\n'));
