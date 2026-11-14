@@ -527,7 +527,7 @@ import { Cloud } from './auth.js';
     const byId = id => list.find(p => same(p.id, id));
     // Continuar viendo: solo aparece si la persona dejó algo a medias (videos propios, donde se puede medir)
     let serAll = []; try { serAll = await seriesCat(); } catch { }
-    const serRecent = serAll.slice(0, 12);
+    const recientes = [...list, ...serAll].sort((a, b) => (b.creado || 0) - (a.creado || 0)).slice(0, 12); // películas y series mezcladas, lo último subido primero
     const cont = data.progreso.map(m => {
       const s = m.ep ? serAll.find(y => same(y.id, m.id)) : null, x = s || byId(m.id);
       if (!x || !m.d) return null;
@@ -553,8 +553,8 @@ import { Cloud } from './auth.js';
         <div class="dots">${slides.map((_, i) => `<button class="${i === 0 ? 'on' : ''}" aria-label="Película ${i + 1}"></button>`).join('')}</div>` : ''}
       </section>
       <div class="wrap">
-        ${rowLocal('Continuar viendo', cont)}
-        ${rowLocal('Series recientes', serRecent, '#/series')}
+        ${rowLocal('Continuar viendo 👀', cont)}
+        ${rowLocal('Subidas recientes 🍿', recientes)}
         <div id="rk1"></div>
         <div id="rks"></div>
         <div id="rk2"></div>
@@ -571,8 +571,8 @@ import { Cloud } from './auth.js';
       const sem = top([...list].sort((a, b) => n(b.id, 'sem') - n(a.id, 'sem') || n(b.id, 'tot') - n(a.id, 'tot') || (b.creado || 0) - (a.creado || 0)), () => ({}));
       const votadas = top([...list].filter(x => n(x.id, 'tot') > 0).sort((a, b) => n(b.id, 'tot') - n(a.id, 'tot') || (b.creado || 0) - (a.creado || 0)), x => ({ votos: n(x.id, 'tot') }));
       const semS = top([...serAll].sort((a, b) => n(b.id, 'sem') - n(a.id, 'sem') || n(b.id, 'tot') - n(a.id, 'tot') || (b.creado || 0) - (a.creado || 0)), () => ({}));
-      r1.innerHTML = rowLocal('Top Pelipe Semanales', sem);
-      if (rs) rs.innerHTML = rowLocal('Top Series Semanales', semS, '#/series');
+      r1.innerHTML = rowLocal('Top Pelipe Semanales 🎬', sem);
+      if (rs) rs.innerHTML = rowLocal('Top Series Semanales 📺', semS, '#/series');
       r2.innerHTML = rowLocal('10 más votadas', votadas);
     });
     rkPending = fillRank; // si la página se vuelve a dibujar antes de que se active, solo cuenta la última versión
@@ -1034,7 +1034,7 @@ import { Cloud } from './auth.js';
           ${parseSource(p.trailer) ? '<button class="btn ghost" id="trailer">Ver tráiler</button>' : ''}
         </div>
       </div></div>
-        <div class="wrap">${rowLocal('Más como esta', similar)}</div>`;
+        <div class="wrap">${rowLocal('Más como esta 😎', similar)}</div>`;
       if (first) wireVideo(app, { ...p, url: first }, { track: live && (!serie || !!ep), ep: serie && ep ? { t: season.n, e: ep.n } : null, next: serie && at >= 0 ? flat[at + 1] : null });
       // Cambiar de calidad/servidor: se sigue desde el mismo minuto
       const playSrv = k => {
