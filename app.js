@@ -634,7 +634,7 @@ import { Cloud } from './auth.js';
       (!p.hasta || (Number(x.anio) > 0 && Number(x.anio) <= Number(p.hasta))));
     if (orden === 'az') items.sort((a, b) => a.titulo.localeCompare(b.titulo, 'es'));
     else if (orden === 'anio') items.sort((a, b) => (Number(b.anio) || 0) - (Number(a.anio) || 0));
-    const titulo = p.q ? `Resultados para “${esc(p.q)}”` : p.genero ? esc(cap(p.genero)) : p.hasta ? `Clásicos (hasta ${esc(p.hasta)})` : SER ? 'Series' : 'Películas';
+    const titulo = p.q ? `Resultados para “${esc(p.q)}”` : p.genero ? esc(cap(p.genero)) : p.hasta ? `Clásicos (hasta ${esc(p.hasta)})` : SER ? 'Series' : 'Catálogo Películas';
     app.innerHTML = `<div class="wrap">
       <h1 style="margin-bottom:16px">${titulo}</h1>
       <form class="filters" id="f">
@@ -682,26 +682,34 @@ import { Cloud } from './auth.js';
   async function proximas() {
     setNav('proximas');
     loading();
-    let l = [];
-    try { const r = await fetch('proximos.json'); if (r.ok) { const j = await r.json(); if (j && Array.isArray(j.peliculas)) l = j.peliculas; } } catch { }
+    let J = {};
+    try { const r = await fetch('proximos.json'); if (r.ok) J = await r.json() || {}; } catch { }
+    const q = parseQuery();
+    const SER = q.tipo === 'series', ORD = q.orden === 'fecha' ? 'fecha' : 'pop';
     const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
     const day = x => new Date(x.fecha + 'T12:00:00');
-    l = l.filter(x => x && x.titulo && /^\d{4}-\d{2}-\d{2}$/.test(x.fecha || '') && day(x) >= hoy); // el archivo puede tener unas horas de retraso
+    const clean = a => (Array.isArray(a) ? a : []).filter(x => x && x.titulo && /^\d{4}-\d{2}-\d{2}$/.test(x.fecha || '') && day(x) >= hoy); // el archivo puede tener unas horas de retraso
+    const lists = { pelis: clean(J.peliculas), series: clean(J.series) };
+    const l = SER ? lists.series : lists.pelis;
     const falta = x => Math.round((day(x) - hoy) / 864e5);
     const when = x => { const n = falta(x); return n <= 0 ? 'Estreno hoy' : n === 1 ? 'Estreno mañana' : `Faltan ${n} días`; };
     const fdate = (x, long) => day(x).toLocaleDateString('es', { day: 'numeric', month: long ? 'long' : 'short', ...(day(x).getFullYear() !== hoy.getFullYear() ? { year: 'numeric' } : {}) });
     const card = (x, i) => `<a class="card" href="#/proximas" data-i="${i}"><div class="poster">${httpsUrl(x.poster) ? `<img loading="lazy" src="${esc(x.poster)}" alt="${esc(x.titulo)}">` : ''}<div class="badge">${esc(fdate(x))}</div></div><b>${esc(x.titulo)}</b><span>${esc(when(x))}</span></a>`;
-    if (!l.length) { app.innerHTML = '<div class="wrap"><h1 style="margin-bottom:16px">Próximas</h1><p class="empty">Aún no hay estrenos cargados. Vuelve pronto.</p></div>'; return; }
+    const go = (t, o) => '#/proximas' + (t === 'series' || o === 'fecha' ? '?' + [t === 'series' ? 'tipo=series' : '', o === 'fecha' ? 'orden=fecha' : ''].filter(Boolean).join('&') : '');
+    const pill = (txt, href, on) => `<a class="sort ${on ? 'on' : ''}" href="${href}" aria-current="${on ? 'true' : 'false'}">${txt}</a>`;
     app.innerHTML = `<div class="wrap">
-      <h1 style="margin-bottom:6px">Próximas</h1>
+      <h1 style="margin-bottom:6px">${SER ? 'Próximas Series' : 'Próximas Películas'}</h1>
       <p class="muted" style="max-width:70ch;margin-bottom:16px">Los estrenos más populares que se acercan, en cines y plataformas. Aún no están disponibles para ver en Pelipe.online: es solo información.</p>
-      <form class="filters"><select id="po"><option value="pop">Más populares</option><option value="fecha">Fecha de estreno</option></select></form>
-      <div class="grid" id="pg"></div>
+      <div class="filters prox-f">
+        <div class="sorts" role="group" aria-label="Tipo">${pill('Películas', go('pelis', ORD), !SER)}${pill('Series', go('series', ORD), SER)}</div>
+        <span class="prox-sep" aria-hidden="true"></span>
+        <div class="sorts" role="group" aria-label="Ordenar por">${pill('Populares', go(q.tipo, 'pop'), ORD === 'pop')}${pill('Fecha de estreno', go(q.tipo, 'fecha'), ORD === 'fecha')}</div>
+      </div>
+      ${l.length ? '<div class="grid" id="pg"></div>' : `<p class="empty" id="pg">${SER ? 'Aún no hay estrenos de series cargados. Vuelve pronto.' : 'Aún no hay estrenos cargados. Vuelve pronto.'}</p>`}
       <p class="muted" style="font-size:.8rem;margin-top:26px">Vía TMDB ¡Prepara tus Palomitas, Crispetas, Pochoclos! 🍿</p></div>`;
-    let cur = l;
-    const draw = () => { document.getElementById('pg').innerHTML = cur.map(card).join(''); };
-    draw();
-    document.getElementById('po').onchange = e => { cur = e.target.value === 'fecha' ? [...l].sort((a, b) => a.fecha.localeCompare(b.fecha)) : l; draw(); };
+    const cur = ORD === 'fecha' ? [...l].sort((a, b) => a.fecha.localeCompare(b.fecha)) : l;
+    if (l.length) document.getElementById('pg').innerHTML = cur.map(card).join('');
+    if (!l.length) return;
     // En PC: al pasar el cursor sale una ventana flotante con la info y el botón del tráiler (no hace falta hacer clic)
     const desk = window.matchMedia && matchMedia('(hover:hover) and (pointer:fine)').matches && innerWidth > 760;
     const trUrl = x => /^[\w-]{6,20}$/.test(x.trailer || '') ? `https://www.youtube.com/watch?v=${x.trailer}` : '';
@@ -715,7 +723,7 @@ import { Cloud } from './auth.js';
       const show = a => {
         const x = cur[Number(a.dataset.i)]; if (!x) return;
         const tr = trUrl(x);
-        pk.innerHTML = `<h4>${esc(x.titulo)}</h4><div class="peek-meta"><span>${esc(fdate(x, true))}</span><span class="peek-r" style="font-size:.85rem">${esc(when(x))}</span>${x.generos ? `<span class="chip">${esc(String(x.generos).split(',')[0].trim())}</span>` : ''}</div><p>${esc(x.sinopsis || 'Sin sinopsis disponible.')}</p>${tr ? '<button class="btn sm" id="pktr" type="button">▶ Ver tráiler</button>' : ''}<p class="peek-note">Solo información: esta película aún no está disponible para ver en Pelipe.online.</p>`;
+        pk.innerHTML = `<h4>${esc(x.titulo)}</h4><div class="peek-meta"><span>${esc(fdate(x, true))}</span><span class="peek-r" style="font-size:.85rem">${esc(when(x))}</span>${x.generos ? `<span class="chip">${esc(String(x.generos).split(',')[0].trim())}</span>` : ''}</div><p>${esc(x.sinopsis || 'Sin sinopsis disponible.')}</p>${tr ? '<button class="btn sm" id="pktr" type="button">▶ Ver tráiler</button>' : ''}<p class="peek-note">Solo información: ${SER ? 'esta serie' : 'esta película'} aún no está disponible para ver en Pelipe.online.</p>`;
         pk.hidden = false;
         const r = a.getBoundingClientRect(), w = pk.offsetWidth, h = pk.offsetHeight;
         let px = r.right + 6; if (px + w > innerWidth - 8) px = r.left - w - 6; if (px < 8) px = Math.max(8, Math.min(innerWidth - w - 8, r.left));
@@ -741,7 +749,7 @@ import { Cloud } from './auth.js';
       if (desk) return; // en PC la información sale al pasar el cursor
       const x = cur[Number(a.dataset.i)]; if (!x) return;
       const tr = /^[\w-]{6,20}$/.test(x.trailer || '') ? `https://www.youtube.com/watch?v=${x.trailer}` : '';
-      openModal(`<div class="proximo"><h2>${esc(x.titulo)}</h2><p class="muted">${esc(fdate(x, true))} · ${esc(when(x))}${x.generos ? ' · ' + esc(x.generos) : ''}</p><p style="margin:12px 0">${esc(x.sinopsis || 'Sin sinopsis disponible.')}</p>${tr ? '<button class="btn" id="ptr" type="button">▶ Ver tráiler</button>' : ''}<p class="muted" style="font-size:.8rem;margin-top:12px">Solo información: esta película aún no está disponible para ver en Pelipe.online.</p></div>`);
+      openModal(`<div class="proximo"><h2>${esc(x.titulo)}</h2><p class="muted">${esc(fdate(x, true))} · ${esc(when(x))}${x.generos ? ' · ' + esc(x.generos) : ''}</p><p style="margin:12px 0">${esc(x.sinopsis || 'Sin sinopsis disponible.')}</p>${tr ? '<button class="btn" id="ptr" type="button">▶ Ver tráiler</button>' : ''}<p class="muted" style="font-size:.8rem;margin-top:12px">Solo información: ${SER ? 'esta serie' : 'esta película'} aún no está disponible para ver en Pelipe.online.</p></div>`);
       const b = document.getElementById('ptr'); if (b) b.onclick = () => openTrailer(tr);
     });
   }
@@ -1738,20 +1746,20 @@ import { Cloud } from './auth.js';
   async function refreshStats() {
     if (!Cloud.enabled || !statsEl) return;
     let s = null;
-    try { const c = JSON.parse(lsGet(LS_STATS)); if (c && Date.now() - c.t < 600000) s = c; } catch { }
+    try { const c = JSON.parse(lsGet(LS_STATS)); if (c && 'series' in c && Date.now() - c.t < 600000) s = c; } catch { }
     if (!s) {
-      s = { t: Date.now(), pelis: null, reacc: null };
-      try { s.pelis = (await catalog()).length; } catch { }
+      s = { t: Date.now(), pelis: null, series: null, reacc: null };
+      try { s.pelis = (await catalog()).length; s.series = (await seriesCat()).length; } catch { }
       try { s.reacc = await Cloud.countReacciones(); }
       catch {
         try { const rk = await ranking(await catalog()); if (rk) s.reacc = Object.values(rk.tot).reduce((a, b) => a + b, 0); } catch { }
       }
-      if (s.pelis != null || s.reacc != null) lsSet(LS_STATS, JSON.stringify(s));
+      if (s.pelis != null || s.series != null || s.reacc != null) lsSet(LS_STATS, JSON.stringify(s));
     }
     let on = null;
     try { on = await Cloud.countOnline(6); } catch { }
     const f = n => n == null ? '—' : Number(n).toLocaleString('es');
-    statsEl.innerHTML = `<span title="Películas publicadas">🎬 ${f(s.pelis)} películas</span><span title="Personas con el sitio abierto en los últimos minutos">🟢 ${f(on)} en línea</span><span title="Reacciones en total">❤️ ${f(s.reacc)} reacciones</span>`;
+    statsEl.innerHTML = `<span title="Películas publicadas">🎬 ${f(s.pelis)} películas</span><span title="Series publicadas">📺 ${f(s.series)} series</span><span title="Personas con el sitio abierto en los últimos minutos">🟢 ${f(on)} en línea</span><span title="Reacciones en total">❤️ ${f(s.reacc)} reacciones</span>`;
   }
   function startPresence() {
     if (presenceOn) return;

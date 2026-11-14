@@ -147,7 +147,7 @@ async function proximos() {
   const key = (process.env.TMDB_API_KEY || CFG.TMDB_API_KEY || '').trim();
   if (!key) return console.log('Próximas: sin clave de TMDB, se omite (ver README).');
   const hoy = new Date().toISOString().slice(0, 10);
-  try { if (JSON.parse(rd('proximos.json')).actualizado === hoy) return console.log('Próximas: ya actualizadas hoy.'); } catch { }
+  try { const j = JSON.parse(rd('proximos.json')); if (j.actualizado === hoy && Array.isArray(j.series)) return console.log('Próximas: ya actualizadas hoy.'); } catch { }
   const base = (process.env.TMDB_URL || 'https://api.themoviedb.org/3').replace(/\/+$/, '');
   const headers = key.length > 40 ? { Authorization: `Bearer ${key}` } : {};
   const api = async (p, q = {}) => {
@@ -175,7 +175,25 @@ async function proximos() {
       } catch { }
       out.push({ id: m.id, titulo: m.title, fecha: m.release_date, sinopsis: cut(m.overview, 400), poster: 'https://image.tmdb.org/t/p/w342' + m.poster_path, generos: (m.genre_ids || []).map(i => gm.get(i)).filter(Boolean).slice(0, 3).join(', '), trailer });
     }
-    if (out.length) { wr('proximos.json', JSON.stringify({ actualizado: hoy, peliculas: out })); console.log(`Próximas: ${out.length} estreno(s).`); }
+    // Series: estrenos (primer episodio) de los próximos 6 meses
+    const outS = [];
+    try {
+      const [gt, dt] = await Promise.all([
+        api('/genre/tv/list'),
+        api('/discover/tv', { include_adult: 'false', sort_by: 'popularity.desc', 'first_air_date.gte': hoy, 'first_air_date.lte': hasta, page: '1' })
+      ]);
+      const gmt = new Map((gt.genres || []).map(g => [g.id, g.name]));
+      for (const m of (dt.results || []).filter(m => m.poster_path && m.name && m.first_air_date).slice(0, 20)) {
+        let trailer = '';
+        try {
+          const v = (await api(`/tv/${m.id}/videos`, { include_video_language: 'es,en,null' })).results || [];
+          const yt = v.filter(x => x.site === 'YouTube' && x.type === 'Trailer' && /^[\w-]{6,20}$/.test(x.key));
+          trailer = (yt.find(x => x.iso_639_1 === 'es') || yt[0] || {}).key || '';
+        } catch { }
+        outS.push({ id: m.id, titulo: m.name, fecha: m.first_air_date, sinopsis: cut(m.overview, 400), poster: 'https://image.tmdb.org/t/p/w342' + m.poster_path, generos: (m.genre_ids || []).map(i => gmt.get(i)).filter(Boolean).slice(0, 3).join(', '), trailer });
+      }
+    } catch (e) { console.warn('Próximas (series): no se pudieron leer (' + e.message + ').'); }
+    if (out.length || outS.length) { wr('proximos.json', JSON.stringify({ actualizado: hoy, peliculas: out, series: outS })); console.log(`Próximas: ${out.length} película(s) y ${outS.length} serie(s).`); }
     else console.warn('Próximas: TMDB no devolvió estrenos; se conserva el archivo anterior.');
   } catch (e) { console.warn('Próximas: no se pudo actualizar (' + e.message + '); se conserva el archivo anterior.'); }
 }

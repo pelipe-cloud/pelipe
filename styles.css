@@ -476,3 +476,21 @@ footer a{display:inline-block;padding:5px 0}
 .ep.on{border-color:var(--acc);background:rgba(255,90,54,.14)}
 
 @media (max-width:640px){.eps-lb{min-width:100%}}
+
+/* Próximas: pestañas Películas/Series y orden */
+.prox-f{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.prox-f .sorts{display:flex;flex-wrap:wrap;gap:8px}
+.prox-f .sort{display:inline-flex;align-items:center;text-decoration:none}
+.prox-sep{width:1px;height:26px;background:var(--line);margin:0 4px}
+/* Series en móvil: todo centrado */
+@media (max-width:640px){
+  .prox-sep{display:none}
+  .prox-f{justify-content:center}
+  .prox-f .sorts{justify-content:center;width:100%}
+  .eps-h{flex-direction:column;align-items:center;text-align:center;gap:10px}
+  .eps-chip{margin-right:0}
+  .eps-nav{justify-content:center}
+  .eps-row{flex-direction:column;align-items:center;gap:8px}
+  .eps-lb{min-width:0;text-align:center}
+  .seas{justify-content:center}
+}
