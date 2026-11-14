@@ -34,7 +34,7 @@ import { Cloud } from './auth.js';
   const LS_REC = 'pelipe:recientes';
   const LS_CAT = 'pelipe:catalogo';
   const LS_SUB = 'pelipe:subtitulo';
-  const LS_RANK = 'pelipe:ranking';
+  const LS_RANK = 'pelipe:ranking2';
   const LS_BK = 'pelipe:copia';
   const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
@@ -46,7 +46,7 @@ import { Cloud } from './auth.js';
     const ok = a => (Array.isArray(a) ? a : []).filter(m => m && m.titulo);
     const out = {
       favoritos: ok(d.favoritos),
-      progreso: ok(d.progreso).filter(m => m.d > 0).slice(0, 20),
+      progreso: ok(d.progreso).filter(m => m.d > 0 || m.sig).map(m => m.ep ? { ...m, ep: { t: Number(m.ep.t) || 1, e: Number(m.ep.e) || 1 } } : m).slice(0, 20),
       listas: Array.isArray(d.listas) ? d.listas.map(l => ({ id: String(l.id), nombre: String(l.nombre || 'Lista'), items: ok(l.items) })) : []
     };
     if (!out.listas.some(l => l.id === 'ver-despues')) out.listas.unshift(b.listas[0]);
@@ -105,8 +105,10 @@ import { Cloud } from './auth.js';
   }
   // Progreso de reproducción ("Continuar viendo"): solo para videos propios (.mp4/.webm/HLS), donde se puede medir
   const progOf = id => data.progreso.find(m => same(m.id, id));
-  function putProgress(p, t, d) {
-    data.progreso = [{ ...mini(p), t: Math.floor(t), d: Math.floor(d), ts: Date.now() }, ...data.progreso.filter(x => !same(x.id, p.id))].slice(0, 20);
+  function putProgress(p, t, d, ep) {
+    const m = { ...mini(p), t: Math.floor(t), d: Math.floor(d), ts: Date.now() };
+    if (ep) m.ep = { t: Number(ep.t) || 1, e: Number(ep.e) || 1 };
+    data.progreso = [m, ...data.progreso.filter(x => !same(x.id, p.id))].slice(0, 20);
   }
   const dropProgress = id => { data.progreso = data.progreso.filter(x => !same(x.id, id)); };
   function createList(nombre) {
@@ -164,7 +166,15 @@ import { Cloud } from './auth.js';
   const qBadges = (p, cls = 'badge q') => qualsOf(p).map(q => `<span class="${cls}">${esc(q)}</span>`).join('');
   let cat = null, catT = 0, catS = '';
   const visible = p => !p.publicarEn || p.publicarEn <= Date.now(); // programadas: ocultas hasta su hora
-  async function catalog(force) { return (await catalogRaw(force)).filter(visible); }
+  // Las series se guardan junto a las películas (tipo:'serie'); aquí se separan: catalog() = solo películas, seriesCat() = solo series
+  const isSerie = p => !!p && p.tipo === 'serie';
+  async function catalog(force) { return (await catalogRaw(force)).filter(visible).filter(p => !isSerie(p)); }
+  async function seriesCat(force) { return (await catalogRaw(force)).filter(visible).filter(isSerie); }
+  // Temporadas y episodios de una serie, ordenados y sin vacíos
+  const epsOf = p => (Array.isArray(p && p.temporadas) ? p.temporadas : [])
+    .map((t, i) => ({ n: Number(t.n) || i + 1, episodios: (Array.isArray(t.episodios) ? t.episodios : []).map((e, j) => ({ n: Number(e.n) || j + 1, titulo: String(e.titulo || ''), servidores: e.servidores })).filter(e => serversOf(e).length).sort((a, b) => a.n - b.n) }))
+    .filter(t => t.episodios.length).sort((a, b) => a.n - b.n);
+  const countEps = p => epsOf(p).reduce((a, t) => a + t.episodios.length, 0);
   // El público lee catalogo.json (archivo estático que genera build.mjs): cero lecturas de Firestore por visita.
   // Si no existe o está vacío, se usa Firestore como respaldo. Quien puede publicar siempre ve los datos en vivo.
   async function staticCat() {
@@ -205,7 +215,7 @@ import { Cloud } from './auth.js';
   // Imágenes de TMDB al tamaño que se necesita (en el celular, más pequeñas = carga más rápida)
   const SMALL = !!(window.matchMedia && matchMedia('(max-width: 900px)').matches);
   const tmdbImg = (u, w) => /^https:\/\/image\.tmdb\.org\/t\/p\/w\d+\//.test(u || '') ? u.replace(/\/t\/p\/w\d+\//, `/t/p/w${w}/`) : u;
-  const cardLocal = p => `<a class="card" href="#/ver/${encodeURIComponent(p.id)}"><div class="poster">${httpsUrl(p.poster) ? `<img loading="lazy" src="${esc(tmdbImg(p.poster, SMALL ? 342 : 500))}" alt="${esc(p.titulo)}">` : ''}<i class="pl" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8.5 5.6v12.8a.8.8 0 0 0 1.2.7l10.2-6.4a.8.8 0 0 0 0-1.4L9.7 4.9a.8.8 0 0 0-1.2.7z"/></svg></i>${gensOf(p)[0] ? `<div class="badge">${esc(cap(gensOf(p)[0]))}</div>` : ''}${qualsOf(p).length ? `<div class="qs">${qBadges(p)}</div>` : ''}${p.pct ? `<div class="prog"><i style="width:${Math.max(4, Math.min(100, Math.round(p.pct)))}%"></i></div>` : ''}${p.rank ? `<div class="rank">${p.rank}</div>` : ''}</div><b>${esc(p.titulo)}</b><span>${esc(p.anio || '')}${p.votos ? ` · ♥ ${p.votos}` : ''}</span></a>`;
+  const cardLocal = p => `<a class="card" href="${p.href ? esc(p.href) : '#/ver/' + encodeURIComponent(p.id)}"><div class="poster">${httpsUrl(p.poster) ? `<img loading="lazy" src="${esc(tmdbImg(p.poster, SMALL ? 342 : 500))}" alt="${esc(p.titulo)}">` : ''}<i class="pl" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8.5 5.6v12.8a.8.8 0 0 0 1.2.7l10.2-6.4a.8.8 0 0 0 0-1.4L9.7 4.9a.8.8 0 0 0-1.2.7z"/></svg></i>${gensOf(p)[0] ? `<div class="badge">${esc(cap(gensOf(p)[0]))}</div>` : ''}${isSerie(p) ? `<div class="qs"><span class="badge q">${p.tag ? esc(p.tag) : 'SERIE'}</span></div>` : qualsOf(p).length ? `<div class="qs">${qBadges(p)}</div>` : ''}${p.pct ? `<div class="prog"><i style="width:${Math.max(4, Math.min(100, Math.round(p.pct)))}%"></i></div>` : ''}${p.rank ? `<div class="rank">${p.rank}</div>` : ''}</div><b>${esc(p.titulo)}</b><span>${esc(p.anio || '')}${p.votos ? ` · ♥ ${p.votos}` : ''}</span></a>`;
   const rowLocal = (title, items, link) => items.length ? `<section class="row"><div class="row-h"><h2>${esc(title)}</h2>${link ? `<a href="${link}">Ver todo →</a>` : ''}</div><div class="scroller">${items.map(cardLocal).join('')}</div></section>` : '';
   const gridLocal = items => `<div class="grid">${items.map(cardLocal).join('')}</div>`;
   const gridRm = (items, attrs) => `<div class="grid">${items.map(p => `<div class="rm-wrap">${cardLocal(p)}<button class="rm" data-id="${esc(p.id)}" ${attrs}>Quitar</button></div>`).join('')}</div>`;
@@ -338,18 +348,23 @@ import { Cloud } from './auth.js';
   }
 
   // Progreso: se guarda cada ~20 s, al pausar y al salir de la página; se borra al terminar la película
-  function trackProgress(v, p) {
+  function trackProgress(v, p, ep, next) {
     let lastFlush = 0;
+    // Al terminar: película → se quita; episodio → "Continuar viendo" pasa al siguiente (si hay)
+    const finish = () => {
+      if (ep && next) data.progreso = [{ ...mini(p), t: 0, d: 1, sig: 1, ep: { t: next.t, e: next.e }, ts: Date.now() }, ...data.progreso.filter(x => !same(x.id, p.id))].slice(0, 20);
+      else dropProgress(p.id);
+    };
     const mem = () => {
       const d = v.duration, t = v.currentTime;
       if (!isFinite(d) || d < 120 || t < 15) return false;
-      if (d - t < 45) dropProgress(p.id); else putProgress(p, t, d);
+      if (d - t < 45) finish(); else putProgress(p, t, d, ep);
       return true;
     };
     const flush = () => { if (mem()) persist(true); lastFlush = Date.now(); };
     v.addEventListener('timeupdate', () => { if (!v.paused && Date.now() - lastFlush > 20000) flush(); });
     v.addEventListener('pause', flush);
-    v.addEventListener('ended', () => { dropProgress(p.id); persist(true); });
+    v.addEventListener('ended', () => { finish(); persist(true); });
     leave = flush;
   }
 
@@ -429,7 +444,8 @@ import { Cloud } from './auth.js';
       const go = () => { try { v.currentTime = opts.startAt; } catch { } if (opts.keepPlaying) v.play().catch(() => { }); };
       if (v.readyState >= 1) go(); else v.addEventListener('loadedmetadata', go, { once: true });
     }
-    const saved = !(opts.startAt > 0) && p && opts.track !== false && progOf(p.id);
+    const saved0 = !(opts.startAt > 0) && p && opts.track !== false && progOf(p.id);
+    const saved = saved0 && (!opts.ep || (saved0.ep && saved0.ep.t === opts.ep.t && saved0.ep.e === opts.ep.e)) ? saved0 : null;
     if (saved && saved.t > 15) {
       const go = () => {
         if (!isFinite(v.duration) || saved.t >= v.duration - 45) return;
@@ -468,7 +484,7 @@ import { Cloud } from './auth.js';
       });
     }
     renderBar();
-    if (p && opts.track !== false) trackProgress(v, p);
+    if (p && opts.track !== false) trackProgress(v, p, opts.ep, opts.next);
   }
   const openTrailer = url => { const s = parseSource(url); if (s) openModal(playerHtml(s)); };
 
@@ -488,7 +504,7 @@ import { Cloud } from './auth.js';
   async function ranking(list) {
     try { const c = JSON.parse(lsGet(LS_RANK)); if (c && c.tot && Date.now() - c.t < 1800000) return c; } catch { }
     try {
-      const since = Date.now() - 7 * 864e5, ids = list.slice(0, 100).map(p => p.id), tot = {}, sem = {};
+      const since = Date.now() - 7 * 864e5, ids = list.slice(0, 150).map(p => p.id), tot = {}, sem = {};
       for (let i = 0; i < ids.length; i += 10) {
         await Promise.all(ids.slice(i, i + 10).map(async id => { [tot[id], sem[id]] = await Promise.all([Cloud.countAll(id), Cloud.countAll(id, since)]); }));
       }
@@ -510,7 +526,13 @@ import { Cloud } from './auth.js';
     const slides = list.slice(0, 10); // las 10 publicadas más recientemente
     const byId = id => list.find(p => same(p.id, id));
     // Continuar viendo: solo aparece si la persona dejó algo a medias (videos propios, donde se puede medir)
-    const cont = data.progreso.map(m => { const x = byId(m.id); return x && m.d ? { ...x, pct: m.t / m.d * 100 } : null; }).filter(Boolean);
+    let serAll = []; try { serAll = await seriesCat(); } catch { }
+    const serRecent = serAll.slice(0, 12);
+    const cont = data.progreso.map(m => {
+      const s = m.ep ? serAll.find(y => same(y.id, m.id)) : null, x = s || byId(m.id);
+      if (!x || !m.d) return null;
+      return s ? { ...s, pct: m.sig ? 0 : m.t / m.d * 100, href: `#/ver/${encodeURIComponent(s.id)}?t=${m.ep.t}&e=${m.ep.e}`, tag: `T${m.ep.t} · E${m.ep.e}${m.sig ? ' · siguiente' : ''}` } : { ...x, pct: m.t / m.d * 100 };
+    }).filter(Boolean);
     const shuffle = a => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
     app.innerHTML = `
       <section class="hero slider" id="slider" aria-roledescription="carrusel" aria-label="Películas recientes">
@@ -532,19 +554,25 @@ import { Cloud } from './auth.js';
       </section>
       <div class="wrap">
         ${rowLocal('Continuar viendo', cont)}
+        ${rowLocal('Series recientes', serRecent, '#/series')}
         <div id="rk1"></div>
-        ${rowLocal('Te recomendamos…', shuffle(list).slice(0, 10))}
+        <div id="rks"></div>
         <div id="rk2"></div>
+        ${rowLocal('Te recomendamos…', shuffle(list).slice(0, 10))}
       </div>`;
     // Rankings por reacciones: se rellenan cuando llegan los conteos (en caché 30 min)
-    const fillRank = () => ranking(list).then(rk => {
-      const r1 = document.getElementById('rk1'), r2 = document.getElementById('rk2');
+    // Se cuentan películas (100 más recientes) y series (50 más recientes) en la misma pasada
+    const rankIn = [...list.slice(0, 100), ...serAll.slice(0, 50)];
+    const fillRank = () => ranking(rankIn).then(rk => {
+      const r1 = document.getElementById('rk1'), r2 = document.getElementById('rk2'), rs = document.getElementById('rks');
       if (!rk || !r1 || !r2) return;
       const n = (id, k) => (rk[k] && rk[k][id]) || 0;
       const top = (arr, extra) => arr.slice(0, 10).map((x, i) => ({ ...x, rank: i + 1, ...extra(x) }));
       const sem = top([...list].sort((a, b) => n(b.id, 'sem') - n(a.id, 'sem') || n(b.id, 'tot') - n(a.id, 'tot') || (b.creado || 0) - (a.creado || 0)), () => ({}));
       const votadas = top([...list].filter(x => n(x.id, 'tot') > 0).sort((a, b) => n(b.id, 'tot') - n(a.id, 'tot') || (b.creado || 0) - (a.creado || 0)), x => ({ votos: n(x.id, 'tot') }));
-      r1.innerHTML = rowLocal('Top Semanales', sem);
+      const semS = top([...serAll].sort((a, b) => n(b.id, 'sem') - n(a.id, 'sem') || n(b.id, 'tot') - n(a.id, 'tot') || (b.creado || 0) - (a.creado || 0)), () => ({}));
+      r1.innerHTML = rowLocal('Top Pelipe Semanales', sem);
+      if (rs) rs.innerHTML = rowLocal('Top Series Semanales', semS, '#/series');
       r2.innerHTML = rowLocal('10 más votadas', votadas);
     });
     rkPending = fillRank; // si la página se vuelve a dibujar antes de que se active, solo cuenta la última versión
@@ -588,12 +616,13 @@ import { Cloud } from './auth.js';
     return Object.fromEntries(new URLSearchParams(q));
   }
 
-  async function catalogPage() {
-    setNav('catalogo');
+  async function catalogPage(kind) {
+    const SER = kind === 'series', base = SER ? '#/series' : '#/catalogo';
+    setNav(SER ? 'series' : 'catalogo');
     if (!Cloud.enabled) { app.innerHTML = needCloud(); return; }
     loading();
     let list;
-    try { list = await catalog(); } catch (e) { return failCloud(e); }
+    try { list = SER ? await seriesCat() : await catalog(); } catch (e) { return failCloud(e); }
     const p = parseQuery();
     const gm = [...genreMap(list).values()].sort((a, b) => a.name.localeCompare(b.name, 'es'));
     const years = [...new Set(list.map(x => String(x.anio || '')).filter(Boolean))].sort().reverse();
@@ -605,7 +634,7 @@ import { Cloud } from './auth.js';
       (!p.hasta || (Number(x.anio) > 0 && Number(x.anio) <= Number(p.hasta))));
     if (orden === 'az') items.sort((a, b) => a.titulo.localeCompare(b.titulo, 'es'));
     else if (orden === 'anio') items.sort((a, b) => (Number(b.anio) || 0) - (Number(a.anio) || 0));
-    const titulo = p.q ? `Resultados para “${esc(p.q)}”` : p.genero ? esc(cap(p.genero)) : p.hasta ? `Clásicos (hasta ${esc(p.hasta)})` : 'Películas';
+    const titulo = p.q ? `Resultados para “${esc(p.q)}”` : p.genero ? esc(cap(p.genero)) : p.hasta ? `Clásicos (hasta ${esc(p.hasta)})` : SER ? 'Series' : 'Películas';
     app.innerHTML = `<div class="wrap">
       <h1 style="margin-bottom:16px">${titulo}</h1>
       <form class="filters" id="f">
@@ -613,10 +642,10 @@ import { Cloud } from './auth.js';
         <input type="hidden" name="hasta" value="${esc(p.hasta || '')}">
         <select name="genero"><option value="">Género</option>${gm.map(g => `<option value="${esc(g.name)}" ${norm(p.genero) === norm(g.name) ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select>
         <select name="anio"><option value="">Año</option>${years.map(y => `<option ${p.anio === y ? 'selected' : ''}>${esc(y)}</option>`).join('')}</select>
-        <select name="orden">${[['recientes', 'Más recientes publicadas'], ['anio', 'Año de estreno'], ['az', 'Título A–Z']].map(([v, t]) => `<option value="${v}" ${orden === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
+        <select name="orden">${[['recientes', SER ? 'Agregadas recientemente' : 'Más recientes publicadas'], ['anio', 'Año de estreno'], ['az', 'Título A–Z']].map(([v, t]) => `<option value="${v}" ${orden === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
       </form>
-      <p class="muted">${items.length} película${items.length === 1 ? '' : 's'}</p>
-      ${items.length ? '<div class="grid" id="g"></div><div class="more" id="more"></div>' : '<p class="empty">No hay películas con esos criterios.</p>'}</div>`;
+      <p class="muted">${items.length} ${SER ? 'serie' : 'película'}${items.length === 1 ? '' : 's'}</p>
+      ${items.length ? '<div class="grid" id="g"></div><div class="more" id="more"></div>' : `<p class="empty">${SER ? (p.q || p.genero || p.anio ? 'No hay series con esos criterios.' : 'Aún no hay series publicadas. Vuelve pronto.') : 'No hay películas con esos criterios.'}</p>`}</div>`;
     // Carga progresiva: 24 a la vez; el resto aparece al acercarte al final (o con el botón)
     if (items.length) {
       const PAGE = 24, g = document.getElementById('g'), more = document.getElementById('more');
@@ -638,7 +667,7 @@ import { Cloud } from './auth.js';
     document.getElementById('f').addEventListener('change', e => {
       const n = new URLSearchParams();
       for (const [k, v] of new FormData(e.currentTarget)) if (v) n.set(k, v);
-      location.hash = '#/catalogo?' + n.toString();
+      location.hash = base + '?' + n.toString();
     });
   }
 
@@ -924,15 +953,26 @@ import { Cloud } from './auth.js';
       if (!p) { try { p = draft ? await Cloud.getBorrador(id) : await Cloud.getPelicula(id); } catch (e) { if (!draft) throw e; } }
       const mine = canPublish() && p && (isAdmin() || p.por === user.email);
       if (!p || (draft && !mine) || (!draft && !visible(p) && !mine)) { app.innerHTML = '<div class="wrap"><p class="empty">No encontramos esta película.</p></div>'; return; }
+      // Series: el episodio sale de la dirección (#/ver/ID?t=temporada&e=episodio); sin indicar, el primero
+      const serie = isSerie(p);
+      const seasons = serie ? epsOf(p) : [];
+      const q0 = parseQuery();
+      const season = serie ? (seasons.find(t => t.n === Number(q0.t)) || seasons[0] || null) : null;
+      const ep = season ? (season.episodios.find(x => x.n === Number(q0.e)) || season.episodios[0]) : null;
+      if (serie) setNav('series');
+      const flat = seasons.flatMap(t => t.episodios.map(e => ({ t: t.n, e: e.n })));
+      const at = ep ? flat.findIndex(x => x.t === season.n && x.e === ep.n) : -1;
+      const epHref = x => `#/ver/${encodeURIComponent(p.id)}?t=${x.t}&e=${x.e}`;
+      const epTag = ep ? `T${season.n} · E${ep.n}` : '';
       const live = !draft && visible(p); // borradores y programadas se ven como vista previa, sin reacciones ni compartir
       if (live) { recents.push(p); lastWatched = p.id; }
-      document.title = `${p.titulo} — Pelipe.online`;
+      document.title = `${p.titulo}${serie && ep ? ' ' + epTag : ''} — Pelipe.online`;
       const gens = gensOf(p);
       const favLabel = () => isFav(p.id) ? '♥ En favoritas' : '♡ Favorita';
       let similar = [];
-      try { similar = (await catalog()).filter(x => x.id !== p.id && gens[0] && norm(gensOf(x)[0] || '') === norm(gens[0])).slice(0, 12); } catch { }
-      const srvs = serversOf(p);
-      const first = srvs[0] ? srvs[0].u : p.url;
+      try { similar = (serie ? await seriesCat() : await catalog()).filter(x => x.id !== p.id && gens[0] && norm(gensOf(x)[0] || '') === norm(gens[0])).slice(0, 12); } catch { }
+      const srvs = serversOf(serie ? (ep || {}) : p);
+      const first = srvs[0] ? srvs[0].u : serie ? '' : p.url;
       let curSrv = 0;
       const quals = qualsOf(p);
       // Opciones bajo el video: HD, cada servidor con la bandera de su idioma
@@ -940,20 +980,28 @@ import { Cloud } from './auth.js';
           <p class="servers-h">Elige servidor</p>
           ${QORD.filter(q => srvs.some(s => s.q === q)).map(q => `<div class="srv-group"><span class="srv-q">${esc(q)}</span><div class="srv-btns">${srvs.map((s, idx) => ({ s, idx })).filter(x => x.s.q === q).map(({ s, idx }, n) => `<button type="button" class="srv ${idx === 0 ? 'on' : ''}" data-k="${idx}" aria-label="${esc(q + ' ' + (IDIOMAS[s.i] || '') + ' ' + (s.n || 'Servidor ' + (n + 1)))}">${flagOf(s.i)}<span class="srv-t"><b>${esc(IDIOMAS[s.i] || 'Idioma original')}</b><small>${esc(s.n || 'Servidor ' + (n + 1))}</small></span></button>`).join('')}</div></div>`).join('')}
         </div>` : '';
-      const srvLabel = () => { const s = srvs[curSrv]; return s ? [s.q, IDIOMAS[s.i], s.n].filter(Boolean).join(' · ') : ''; };
+      // Temporadas y episodios (solo series)
+      const epsPanel = serie ? (ep ? `<div class="eps" id="eps">
+          <div class="eps-h"><b class="eps-now">${esc(epTag)}${ep.titulo ? ' — ' + esc(ep.titulo) : ''}</b>
+            <span class="eps-nav">${at > 0 ? `<a class="btn ghost sm" href="${epHref(flat[at - 1])}">‹ Anterior</a>` : ''}${at >= 0 && at < flat.length - 1 ? `<a class="btn sm" href="${epHref(flat[at + 1])}">Siguiente ▶</a>` : ''}</span></div>
+          ${seasons.length > 1 ? `<label class="eps-s">Temporada <select id="seasel">${seasons.map(t => `<option value="${t.n}" ${t.n === season.n ? 'selected' : ''}>Temporada ${t.n}</option>`).join('')}</select></label>` : ''}
+          <div class="eps-list" role="list">${season.episodios.map(e => `<a role="listitem" class="ep ${e.n === ep.n ? 'on' : ''}" href="${epHref({ t: season.n, e: e.n })}" ${e.n === ep.n ? 'aria-current="true"' : ''}><b>${e.n}</b><span>${esc(e.titulo || 'Episodio ' + e.n)}</span></a>`).join('')}</div>
+        </div>` : '<div class="notice slim"><p>Esta serie aún no tiene episodios disponibles.</p></div>') : '';
+      const srvLabel = () => { const s = srvs[curSrv]; return s ? [serie ? epTag : '', s.q, IDIOMAS[s.i], s.n].filter(Boolean).join(' · ') : ''; };
       app.innerHTML = `<div class="theater"><div class="theater-in">
-        <h1 class="t-title">${esc(p.titulo)} ${p.anio ? `<small class="muted">(${esc(p.anio)})</small>` : ''}</h1>
+        <h1 class="t-title">${esc(p.titulo)} ${p.anio ? `<small class="muted">(${esc(p.anio)})</small>` : ''}${serie && ep ? ` <small class="muted">${esc(epTag)}</small>` : ''}</h1>
         ${live ? '' : `<div class="notice slim"><p><b>Vista previa.</b> ${draft ? 'Este es un borrador: solo tú puedes verlo.' : 'Programada para el ' + esc(new Date(p.publicarEn).toLocaleString('es', { dateStyle: 'long', timeStyle: 'short' })) + '; hasta entonces solo tú puedes verla.'}</p></div>`}
-        ${playerHtml(parseSource(first), coverOf(p))}
+        ${first ? playerHtml(parseSource(first), coverOf(p)) : ''}
         <div class="resume" id="resume" hidden></div>
         <div class="pbar" id="pbar" hidden></div>
         ${srvPanel}
+        ${epsPanel}
         ${live ? reactHtml() : ''}
-        ${gens.length ? `<div class="chips">${gens.slice(0, 1).map(g => `<a class="chip" href="#/catalogo?genero=${encodeURIComponent(g)}">${esc(g)}</a>`).join('')}</div>` : ''}
+        ${gens.length ? `<div class="chips">${gens.slice(0, 1).map(g => `<a class="chip" href="${serie ? '#/series' : '#/catalogo'}?genero=${encodeURIComponent(g)}">${esc(g)}</a>`).join('')}</div>` : ''}
         ${p.sinopsis ? `<p class="overview">${esc(p.sinopsis)}</p>` : ''}
         <dl class="ficha">${[
           ['Año', p.anio],
-          ['Duración', fmtDur(p.duracion)],
+          ...(serie ? [['Temporadas', seasons.length || ''], ['Episodios', countEps(p) || '']] : [['Duración', fmtDur(p.duracion)]]),
           ['Calidad', quals.join(' · ')],
           ['Calificación', Number(p.calificacion) > 0 ? '★ ' + Number(p.calificacion).toFixed(1) + ' / 10' : ''],
           ['Subtítulos', (Array.isArray(p.subtitulos) ? p.subtitulos : []).map(s => s.n).join(', ')],
@@ -968,7 +1016,7 @@ import { Cloud } from './auth.js';
         </div>
       </div></div>
         <div class="wrap">${rowLocal('Más como esta', similar)}</div>`;
-      wireVideo(app, { ...p, url: first }, { track: live });
+      if (first) wireVideo(app, { ...p, url: first }, { track: live && (!serie || !!ep), ep: serie && ep ? { t: season.n, e: ep.n } : null, next: serie && at >= 0 ? flat[at + 1] : null });
       // Cambiar de calidad/servidor: se sigue desde el mismo minuto
       const playSrv = k => {
         const s = srvs[k];
@@ -984,8 +1032,10 @@ import { Cloud } from './auth.js';
         app.querySelectorAll('#servers .srv').forEach(b => b.classList.toggle('on', Number(b.dataset.k) === k));
         const rs = document.getElementById('resume'), pb = document.getElementById('pbar');
         rs.hidden = true; pb.hidden = true; pb.innerHTML = '';
-        wireVideo(app, { ...p, url: s.u }, { track: live, startAt: t, keepPlaying: was });
+        wireVideo(app, { ...p, url: s.u }, { track: live && (!serie || !!ep), startAt: t, keepPlaying: was, ep: serie && ep ? { t: season.n, e: ep.n } : null, next: serie && at >= 0 ? flat[at + 1] : null });
       };
+      const sea = document.getElementById('seasel');
+      if (sea) sea.onchange = () => { location.hash = epHref({ t: sea.value, e: 1 }); };
       const sp = document.getElementById('servers');
       if (sp) sp.addEventListener('click', e => { const b = e.target.closest('.srv'); if (b) playSrv(Number(b.dataset.k)); });
       if (live) {
@@ -1073,13 +1123,15 @@ import { Cloud } from './auth.js';
   }
 
   // Busca la película por título (y año) en TMDB y devuelve su póster y fondo oficiales
-  async function tmdbArt(titulo, anio) {
+  async function tmdbArt(titulo, anio, tv) {
     try {
       const y = /^\d{4}$/.test(anio) ? anio : '';
-      let rs = (await tmdb('/search/movie', { query: titulo, include_adult: 'false', year: y })).results || [];
-      if (!rs.some(x => x.poster_path) && y) rs = (await tmdb('/search/movie', { query: titulo, include_adult: 'false' })).results || [];
+      const ep = tv ? '/search/tv' : '/search/movie', yk = tv ? 'first_air_date_year' : 'year';
+      let rs = (await tmdb(ep, { query: titulo, include_adult: 'false', [yk]: y })).results || [];
+      if (!rs.some(x => x.poster_path) && y) rs = (await tmdb(ep, { query: titulo, include_adult: 'false' })).results || [];
       const m = rs.find(x => x.poster_path);
       if (!m) return null;
+      if (tv) { m.title = m.name; m.release_date = m.first_air_date; }
       return { nombre: `${m.title}${m.release_date ? ' (' + m.release_date.slice(0, 4) + ')' : ''}`, poster: 'https://image.tmdb.org/t/p/w500' + m.poster_path, fondo: m.backdrop_path ? 'https://image.tmdb.org/t/p/w1280' + m.backdrop_path : '' };
     } catch { return null; }
   }
@@ -1113,18 +1165,21 @@ import { Cloud } from './auth.js';
       else list = list.filter(p => p.por === user.email); // un editor solo gestiona lo suyo
     } catch (e) { toast('No se pudo leer el catálogo: ' + (e.code || e.message)); }
     try { drafts = (await Cloud.listBorradores(isAdmin() ? null : user.email)).sort((a, b) => (b.actualizado || 0) - (a.actualizado || 0)); } catch (e) { /* sin reglas de borradores */ }
+    const seriesL = list.filter(isSerie); list = list.filter(p => !isSerie(p)); // las series tienen su propio formulario y lista
     const now = Date.now();
     const pubs = list.filter(p => !(p.publicarEn > now)), sched = list.filter(p => p.publicarEn > now).sort((a, b) => a.publicarEn - b.publicarEn);
     let reps = [];
     try { reps = (await Cloud.listReportes(isAdmin() ? null : user.email)).sort((a, b) => ms(b.t) - ms(a.t)); } catch (e) { /* sin reglas de reportes: no se muestra el panel */ }
     const curDraft = editing ? drafts.find(x => x.id === editing) : null;
     const curPub = editing && !curDraft ? list.find(x => x.id === editing) : null;
+    const curSerie = editing ? seriesL.find(x => x.id === editing) : null;
+    const serieText = sr => epsOf(sr).flatMap(t => t.episodios.flatMap(e => serversOf(e).map(sv => `${t.n}x${String(e.n).padStart(2, '0')} | ${e.titulo || ''} | ${sv.i || ''} | ${sv.u}${sv.n ? ' | ' + sv.n : ''}`))).join('\n');
     const cur = curDraft || curPub || null;
     const modoIni = curDraft ? 'borrador' : curPub && curPub.publicarEn > now ? 'programar' : 'ahora';
     const localDT = ms0 => { const d = new Date(ms0 - new Date(ms0).getTimezoneOffset() * 60000); return d.toISOString().slice(0, 16); };
     const v = k => esc(cur?.[k] ?? '');
     app.innerHTML = `<div class="wrap admin">
-      <h1>Publicar películas <span class="chip" style="vertical-align:middle;font-size:.8rem">${isAdmin() ? 'Administrador' : 'Editor'}</span></h1>
+      <h1>Publicar películas y series <span class="chip" style="vertical-align:middle;font-size:.8rem">${isAdmin() ? 'Administrador' : 'Editor'}</span></h1>
       <p class="muted" style="max-width:70ch;margin:6px 0 20px">Publica solo obras tuyas, de dominio público, con licencia libre o con permiso escrito del titular.</p>
       <p class="muted" style="max-width:70ch;margin:-10px 0 20px;font-size:.85rem">Tú ves los cambios al instante. El público los ve cuando se actualiza el sitio (automático cada hora; ver README, “Actualizar el sitio”).</p>
       ${reps.length ? `<section class="panel wide" id="reps">
@@ -1175,9 +1230,27 @@ import { Cloud } from './auth.js';
         </fieldset>
         <div class="actions"><button class="btn">${cur ? 'Guardar cambios' : 'Publicar'}</button>${cur ? '<button type="button" class="btn ghost" id="cancel">Cancelar</button>' : ''}</div>
       </form>
+      <form id="sf" class="panel wide pform" autocomplete="off">
+        <h2>${curSerie ? 'Editar serie' : 'Nueva serie'}</h2>
+        <label>Título *<input name="titulo" required maxlength="120" value="${esc(curSerie?.titulo ?? '')}"></label>
+        <div class="three">
+          <label>Año de estreno<input name="anio" inputmode="numeric" maxlength="4" value="${esc(curSerie?.anio ?? '')}"></label>
+          <label>Calificación (0–10)<input name="calificacion" inputmode="decimal" maxlength="4" value="${esc(curSerie?.calificacion ?? '')}"></label>
+        </div>
+        <label>Género(s) <small class="muted">separados por coma; solo el primero cuenta: es la categoría de la serie</small><input name="generos" maxlength="120" value="${esc(curSerie?.generos ?? '')}"></label>
+        <label>Sinopsis<textarea name="sinopsis" rows="4" maxlength="1500">${esc(curSerie?.sinopsis ?? '')}</textarea></label>
+        <label>Episodios * <small class="muted">una línea por servidor: <b>TEMPORADAxEPISODIO | Título | idioma | enlace</b>. Idioma: <b>lat</b> (Latino), <b>en</b> (English), <b>ensub</b> (English sub. español) o vacío. Para ofrecer varios idiomas del mismo episodio, repite la línea con otro idioma. Opcional: un 5.º campo con el nombre del servidor.</small><textarea name="episodios" rows="10" required spellcheck="false" placeholder="1x01 | Piloto | lat | https://…/ep1-latino.mp4&#10;1x01 | Pilot | en | https://…/ep1-en.mp4&#10;1x02 | Segundo episodio | lat | https://…/ep2.mp4">${esc(curSerie ? serieText(curSerie) : '')}</textarea></label>
+        <label>Póster (enlace https a una imagen vertical) <small class="muted">si lo dejas vacío, se busca por título en TMDB</small><input name="poster" type="url" value="${esc(curSerie?.poster ?? '')}"></label>
+        <label>Imagen de fondo para la portada <small class="muted">opcional, horizontal</small><input name="fondo" type="url" value="${esc(curSerie?.fondo ?? '')}"></label>
+        <label>Licencia *<select name="licencia" required><option value="">Elige…</option>${Object.entries(LICENCIAS).map(([k, t]) => `<option value="${k}" ${curSerie?.licencia === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+        <label>Créditos / atribución / enlace a la licencia<input name="creditos" maxlength="300" value="${esc(curSerie?.creditos ?? '')}"></label>
+        <label class="chk"><input type="checkbox" name="ok" required> <span>Confirmo que tengo los derechos para publicar esta serie o que es de dominio público / licencia libre.</span></label>
+        <div class="actions"><button class="btn">${curSerie ? 'Guardar cambios' : 'Publicar serie'}</button>${curSerie ? '<button type="button" class="btn ghost" id="scancel">Cancelar</button>' : ''}</div>
+      </form>
       ${(() => {
         const row = (p, k) => `<div class="arow"><a href="#/${k === 'draft' ? 'vista' : 'ver'}/${encodeURIComponent(p.id)}"><b>${esc(p.titulo || '(sin título)')}</b></a><span class="muted">${k === 'sched' ? '🕒 ' + esc(new Date(p.publicarEn).toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' })) : k === 'draft' ? 'Borrador' : esc(LICENCIAS[p.licencia] || '')}${isAdmin() && p.por ? ' · ' + esc(p.por) : ''}</span>${k !== 'pub' ? `<button class="btn ghost sm" data-now="${esc(p.id)}" data-k="${k}">Publicar ahora</button>` : ''}<button class="btn ghost sm" data-edit="${esc(p.id)}">Editar</button><button class="btn ghost sm" data-del="${esc(p.id)}" data-k="${k}">Eliminar</button></div>`;
         return `<h2 style="margin-top:28px">Publicadas (${pubs.length})</h2><div class="adminlist" id="lpub">${pubs.map(p => row(p, 'pub')).join('') || '<p class="muted">Aún no hay nada.</p>'}</div>
+        <h2 style="margin-top:24px">Series (${seriesL.length})</h2><div class="adminlist" id="lser">${seriesL.map(p => `<div class="arow"><a href="#/ver/${encodeURIComponent(p.id)}"><b>${esc(p.titulo || '(sin título)')}</b></a><span class="muted">${epsOf(p).length} temp. · ${countEps(p)} ep. · ${esc(LICENCIAS[p.licencia] || '')}${isAdmin() && p.por ? ' · ' + esc(p.por) : ''}</span><button class="btn ghost sm" data-edit="${esc(p.id)}">Editar</button><button class="btn ghost sm" data-del="${esc(p.id)}" data-k="pub">Eliminar</button></div>`).join('') || '<p class="muted">Aún no hay series.</p>'}</div>
         ${sched.length ? `<h2 style="margin-top:24px">Programadas (${sched.length})</h2><div class="adminlist" id="lsched">${sched.map(p => row(p, 'sched')).join('')}</div>` : ''}
         ${drafts.length ? `<h2 style="margin-top:24px">Borradores (${drafts.length})</h2><div class="adminlist" id="ldraft">${drafts.map(p => row(p, 'draft')).join('')}</div>` : ''}`;
       })()}
@@ -1261,6 +1334,59 @@ import { Cloud } from './auth.js';
       catch (err) { toast('No se pudo guardar: ' + (err.code || err.message)); }
     });
 
+    // ---- Series: formulario ----
+    const sf = document.getElementById('sf');
+    const LANG = { lat: 'lat', latino: 'lat', en: 'en', english: 'en', ingles: 'en', ensub: 'ensub', sub: 'ensub', subtitulado: 'ensub', '': '' };
+    const parseEps = txt => {
+      const temps = new Map(), errs = [];
+      txt.split(/\n/).map(l => l.trim()).filter(Boolean).forEach((line, i) => {
+        const c = line.split('|').map(x => x.trim());
+        const m = (c[0] || '').match(/^(?:s|t)?\s*(\d{1,2})\s*[xe]\s*(\d{1,3})$/i);
+        if (!m || c.length < 4) return errs.push(`Línea ${i + 1}: usa “1x01 | Título | idioma | enlace”.`);
+        const lang = LANG[norm(c[2])];
+        if (lang === undefined) return errs.push(`Línea ${i + 1}: idioma no válido (usa lat, en, ensub o déjalo vacío).`);
+        if (!parseSource(c[3])) return errs.push(`Línea ${i + 1}: enlace de video no válido o no compatible (debe ser https).`);
+        const T = Number(m[1]), E = Number(m[2]);
+        if (!temps.has(T)) temps.set(T, new Map());
+        const eps = temps.get(T);
+        if (!eps.has(E)) eps.set(E, { n: E, titulo: c[1], servidores: [] });
+        const ep = eps.get(E);
+        if (c[1] && !ep.titulo) ep.titulo = c[1];
+        ep.servidores.push({ q: 'HD', i: lang, n: c[4] || '', u: c[3] });
+      });
+      return { errs, temporadas: [...temps.entries()].sort((a, b) => a[0] - b[0]).map(([n, eps]) => ({ n, episodios: [...eps.values()].sort((a, b) => a.n - b.n) })) };
+    };
+    if (sf) {
+      const sc = document.getElementById('scancel');
+      if (sc) sc.onclick = () => { editing = null; adminPage(); };
+      sf.addEventListener('submit', async e => {
+        e.preventDefault();
+        const btn = sf.querySelector('button.btn');
+        btn.disabled = true;
+        try {
+          const g = n => sf.elements[n].value.trim();
+          if (!g('titulo')) return toast('Falta el título.');
+          if (!g('licencia')) return toast('Elige la licencia.');
+          if (['cc', 'permiso'].includes(g('licencia')) && !g('creditos')) return toast('Indica los créditos o el enlace de la licencia.');
+          for (const [n, t] of [['poster', 'El póster'], ['fondo', 'La imagen de fondo']]) if (g(n) && !httpsUrl(g(n))) return toast(t + ' debe ser un enlace https.');
+          const cal = g('calificacion').replace(',', '.');
+          if (cal && !(Number(cal) >= 0 && Number(cal) <= 10)) return toast('La calificación va de 0 a 10.');
+          const { errs, temporadas } = parseEps(g('episodios'));
+          if (errs.length) return toast(errs[0]);
+          if (!temporadas.length) return toast('Agrega al menos un episodio.');
+          if (!g('poster') && !g('fondo') && hasTmdb()) {
+            const t = await tmdbArt(g('titulo'), g('anio'), true);
+            if (t) { sf.elements.poster.value = t.poster || ''; sf.elements.fondo.value = t.fondo || ''; toast(`Portada oficial tomada de TMDB: “${t.nombre}”. Si no es la serie correcta, cámbiala editando.`); }
+          }
+          const id = curSerie ? curSerie.id : 's' + Date.now().toString(36);
+          const d = { tipo: 'serie', titulo: g('titulo'), anio: g('anio'), calificacion: cal ? Number(Number(cal).toFixed(1)) : '', generos: g('generos'), sinopsis: g('sinopsis'), poster: g('poster'), fondo: g('fondo'), licencia: g('licencia'), creditos: g('creditos'), temporadas, calidad: 'HD', calidades: ['HD'], url: temporadas[0].episodios[0].servidores[0].u, creado: curSerie ? (curSerie.creado || Date.now()) : Date.now(), publicarEn: 0, actualizado: Date.now(), por: curSerie?.por || user.email };
+          await Cloud.savePelicula(id, d);
+          bust(); editing = null; toast(curSerie ? 'Serie actualizada.' : 'Serie publicada.'); adminPage();
+        } catch (err) { toast('No se pudo guardar: ' + (err.code || err.message)); }
+        finally { btn.disabled = false; }
+      });
+    }
+
     app.querySelectorAll('.adminlist').forEach(box => box.addEventListener('click', async e => {
       const b = e.target.closest('button');
       if (!b) return;
@@ -1282,12 +1408,12 @@ import { Cloud } from './auth.js';
     }));
 
     // Copia de seguridad (descargar) y restauración (solo administrador)
-    const BK = ['titulo', 'anio', 'duracion', 'calificacion', 'generos', 'calidad', 'calidades', 'servidores', 'sinopsis', 'poster', 'fondo', 'trailer', 'url', 'licencia', 'creditos', 'creado', 'actualizado', 'por', 'subtitulos', 'versiones', 'audioNombre', 'publicarEn'];
+    const BK = ['titulo', 'anio', 'duracion', 'calificacion', 'generos', 'calidad', 'calidades', 'servidores', 'sinopsis', 'poster', 'fondo', 'trailer', 'url', 'licencia', 'creditos', 'creado', 'actualizado', 'por', 'subtitulos', 'versiones', 'audioNombre', 'publicarEn', 'tipo', 'temporadas'];
     const pick = x => { const o = {}; for (const k of BK) if (x[k] !== undefined) o[k] = x[k]; return o; };
     const bkLast = () => { const t = Number(lsGet(LS_BK)); document.getElementById('bklast').textContent = t ? `Última copia: hace ${Math.max(0, Math.floor((Date.now() - t) / 864e5))} día(s).` : 'Aún no has descargado ninguna copia.'; };
     bkLast();
     document.getElementById('bk').onclick = () => {
-      const out = { app: 'pelipe', version: 1, exportado: new Date().toISOString(), peliculas: list.map(p => ({ id: p.id, ...pick(p) })), borradores: drafts.map(p => ({ id: p.id, ...pick(p) })), editores: isAdmin() ? team.map(t => ({ id: t.id, email: t.email || t.id, por: t.por || '' })) : [] };
+      const out = { app: 'pelipe', version: 1, exportado: new Date().toISOString(), peliculas: [...list, ...seriesL].map(p => ({ id: p.id, ...pick(p) })), borradores: drafts.map(p => ({ id: p.id, ...pick(p) })), editores: isAdmin() ? team.map(t => ({ id: t.id, email: t.email || t.id, por: t.por || '' })) : [] };
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }));
       a.download = `pelipe-copia-${new Date().toISOString().slice(0, 10)}.json`;
@@ -1413,7 +1539,8 @@ import { Cloud } from './auth.js';
   const routes = [
     [/^#\/ver\/([^?]+)/, m => watchPage(m[1])],
     [/^#\/vista\/([^?]+)/, m => watchPage(m[1], true)],
-    [/^#\/catalogo/, catalogPage],
+    [/^#\/catalogo/, () => catalogPage()],
+    [/^#\/series/, () => catalogPage('series')],
     [/^#\/(?:explorar|pelicula)/, () => { location.replace('#/catalogo'); }],
     [/^#\/sorpresa/, surprise],
     [/^#\/proximas/, proximas],
@@ -1457,7 +1584,7 @@ import { Cloud } from './auth.js';
       const raw = inp.value.trim(), q = norm(raw), my = ++seq;
       if (q.length < 2) return close();
       let list = [];
-      try { list = await catalog(); } catch { }
+      try { list = [...await catalog(), ...await seriesCat()]; } catch { }
       if (my !== seq) return;
       items = list.map(p => ({ p, s: score(p, q) })).filter(x => x.s >= 0).sort((a, b) => a.s - b.s || (a.p.titulo || '').localeCompare(b.p.titulo || '', 'es')).slice(0, 6).map(x => x.p);
       box.innerHTML = (items.length

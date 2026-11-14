@@ -71,19 +71,21 @@ const LIC = { propia: 'Obra propia', publico: 'Dominio público', cc: 'Creative 
 const dur = m => { const n = Number(m); return n > 0 ? `${Math.floor(n / 60) ? Math.floor(n / 60) + ' h ' : ''}${n % 60 ? (n % 60) + ' min' : ''}`.trim() : ''; };
 const iso = m => { const n = Number(m); return n > 0 ? `PT${Math.floor(n / 60)}H${n % 60}M` : ''; };
 const visible = p => !p.publicarEn || p.publicarEn <= Date.now();
+const isSerie = p => p && p.tipo === 'serie';
 const safeId = id => /^[A-Za-z0-9_-]+$/.test(id);
 
 // --- página de una película ---
 const logo = (rd('index.html').match(/<a class="logo"[\s\S]*?<\/a>/) || ['<a class="logo" href="#/">Pelipe.online</a>'])[0].replace(/href="[^"]*"/, 'href="../../"');
 
 function page(p) {
-  const title = `${p.titulo}${p.anio ? ` (${p.anio})` : ''} — Ver película | Pelipe.online`;
+  const S = isSerie(p);
+  const title = `${p.titulo}${p.anio ? ` (${p.anio})` : ''} — Ver ${S ? 'serie' : 'película'} | Pelipe.online`;
   const desc = cut(p.sinopsis, 155) || `Mira “${p.titulo}” completa en Pelipe.online.`;
   const img = https(p.poster) || https(p.fondo);
   const url = SITE ? `${SITE}/p/${encodeURIComponent(p.id)}/` : '';
   const play = `../../#/ver/${encodeURIComponent(p.id)}`;
   const ld = {
-    '@context': 'https://schema.org', '@type': 'Movie', name: p.titulo, description: cut(p.sinopsis, 500) || undefined,
+    '@context': 'https://schema.org', '@type': S ? 'TVSeries' : 'Movie', name: p.titulo, description: cut(p.sinopsis, 500) || undefined,
     image: img || undefined, datePublished: p.anio || undefined, duration: iso(p.duracion) || undefined,
     genre: gens(p).length ? gens(p) : undefined, inLanguage: undefined, isAccessibleForFree: true, url: url || undefined,
     potentialAction: SITE ? { '@type': 'WatchAction', target: `${SITE}/#/ver/${encodeURIComponent(p.id)}` } : undefined
@@ -99,7 +101,7 @@ function page(p) {
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 ${url ? `<link rel="canonical" href="${esc(url)}">\n<meta property="og:url" content="${esc(url)}">` : ''}
-<meta property="og:type" content="video.movie">
+<meta property="og:type" content="${S ? 'video.tv_show' : 'video.movie'}">
 <meta property="og:site_name" content="Pelipe.online">
 <meta property="og:title" content="${esc(p.titulo)}${p.anio ? ` (${esc(p.anio)})` : ''}">
 <meta property="og:description" content="${esc(desc)}">
@@ -122,7 +124,7 @@ ${img ? `<img src="${esc(img)}" alt="Póster de ${esc(p.titulo)}" width="230" he
 <div class="chips">${chips}</div>
 <p>${esc(p.sinopsis || '')}</p>
 ${p.creditos ? `<p class="lic">${esc(p.creditos)}</p>` : ''}
-<p><a class="btn" href="${play}">▶ Ver película</a> &nbsp; <a class="btn ghost" href="../../#/catalogo">Más películas</a></p>
+<p><a class="btn" href="${play}">▶ Ver ${S ? 'serie' : 'película'}</a> &nbsp; <a class="btn ghost" href="../../#/${S ? 'series' : 'catalogo'}">Más ${S ? 'series' : 'películas'}</a></p>
 </div>
 </article>
 </main>
@@ -191,7 +193,7 @@ if (SITE) {
 
 // index.html: bloque de cabecera + og:image
 let html = rd('index.html');
-const first = pub[0];
+const first = pub.find(p => !isSerie(p)); // la portada del inicio es siempre una película
 const hero = first && (https(first.fondo) || https(first.poster));
 const block = [
   SITE ? `<link rel="canonical" href="${SITE}/">\n  <meta property="og:url" content="${SITE}/">` : '',

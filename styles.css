@@ -450,3 +450,18 @@ footer a{display:inline-block;padding:5px 0}
 .logo-dom{font-size:.55em;letter-spacing:.06em;margin-left:.04em;align-self:flex-end;padding-bottom:.08em}
 /* Evita el salto del pie de página mientras carga el contenido (mejora CLS) */
 #app:empty,#app:has(>.wrap>.skel){min-height:100svh}
+
+/* ===== Series: temporadas y episodios ===== */
+.eps{max-width:1000px;margin:18px auto 0;text-align:left}
+.theater .eps{max-width:none}
+.eps-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;margin-bottom:10px}
+.eps-now{font-size:1.02rem}
+.eps-nav{display:flex;gap:8px}
+.eps-s{display:inline-flex;align-items:center;gap:8px;font-size:.9rem;color:var(--mute);margin-bottom:10px}
+.eps-s select{background:var(--bg3);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:inherit}
+.eps-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.ep{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg2);color:var(--tx);text-decoration:none;min-height:44px}
+.ep b{flex:none;min-width:2ch;text-align:center;color:var(--acc2)}
+.ep span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem}
+.ep:hover{border-color:var(--acc)}
+.ep.on{border-color:var(--acc);background:rgba(255,90,54,.14)}
