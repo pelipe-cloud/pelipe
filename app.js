@@ -172,7 +172,7 @@ import { Cloud } from './auth.js';
   async function seriesCat(force) { return (await catalogRaw(force)).filter(visible).filter(isSerie); }
   // Temporadas y episodios de una serie, ordenados y sin vacíos
   const epsOf = p => (Array.isArray(p && p.temporadas) ? p.temporadas : [])
-    .map((t, i) => ({ n: Number(t.n) || i + 1, episodios: (Array.isArray(t.episodios) ? t.episodios : []).map((e, j) => ({ n: Number(e.n) || j + 1, titulo: String(e.titulo || ''), servidores: e.servidores })).filter(e => serversOf(e).length).sort((a, b) => a.n - b.n) }))
+    .map((t, i) => ({ n: Number(t.n) || i + 1, episodios: (Array.isArray(t.episodios) ? t.episodios : []).map((e, j) => ({ n: Number(e.n) || j + 1, titulo: String(e.titulo || ''), sinopsis: String(e.sinopsis || ''), servidores: e.servidores })).filter(e => serversOf(e).length).sort((a, b) => a.n - b.n) }))
     .filter(t => t.episodios.length).sort((a, b) => a.n - b.n);
   const countEps = p => epsOf(p).reduce((a, t) => a + t.episodios.length, 0);
   // El público lee catalogo.json (archivo estático que genera build.mjs): cero lecturas de Firestore por visita.
@@ -1000,7 +1000,7 @@ import { Cloud } from './auth.js';
       const oneLang = serie && srvs.length === 1 && srvs[0].i ? `<span class="eps-chip">${flagOf(srvs[0].i)}${esc(IDIOMAS[srvs[0].i])}</span>` : '';
       // Temporadas y episodios (solo series)
       const epsPanel = serie ? (ep ? `<div class="eps" id="eps">
-          <div class="eps-h"><b class="eps-now">${esc(epTag)}${ep.titulo ? ' — ' + esc(ep.titulo) : ''}</b>${oneLang}
+          <div class="eps-h"><div class="eps-now"><b>${esc(epTag)}${ep.titulo ? ' — ' + esc(ep.titulo) : ''}</b>${ep.sinopsis ? `<p class="eps-syn">${esc(ep.sinopsis)}</p>` : ''}</div>${oneLang}
             <span class="eps-nav">${at > 0 ? `<a class="btn ghost sm" href="${epHref(flat[at - 1])}">‹ Anterior</a>` : ''}${at >= 0 && at < flat.length - 1 ? `<a class="btn sm" href="${epHref(flat[at + 1])}">Siguiente ▶</a>` : ''}</span></div>
           ${srvPills}
           ${seasons.length > 1 ? `<div class="eps-row" id="seasons" role="group" aria-label="Temporada"><span class="eps-lb">Temporada</span><div class="seas">${seasons.map(t => `<button type="button" class="sort ${t.n === season.n ? 'on' : ''}" data-t="${t.n}" aria-pressed="${t.n === season.n}">${t.n}</button>`).join('')}</div></div>` : ''}
@@ -1016,9 +1016,9 @@ import { Cloud } from './auth.js';
         ${serie ? '' : srvPanel}
         ${epsPanel}
         ${live ? reactHtml() : ''}
-        ${gens.length ? `<div class="chips">${gens.slice(0, 1).map(g => `<a class="chip" href="${serie ? '#/series' : '#/catalogo'}?genero=${encodeURIComponent(g)}">${esc(g)}</a>`).join('')}</div>` : ''}
-        ${p.sinopsis ? `<p class="overview">${esc(p.sinopsis)}</p>` : ''}
+        ${p.sinopsis ? `<section class="syn"><h2 class="syn-h">Sinopsis</h2><p class="overview">${esc(p.sinopsis)}</p></section>` : ''}
         <dl class="ficha">${[
+          ['Género', gens[0], `<a class="ficha-g" href="${serie ? '#/series' : '#/catalogo'}?genero=${encodeURIComponent(gens[0] || '')}">${esc(gens[0] || '')}</a>`],
           ['Año', p.anio],
           ...(serie ? [['Temporadas', seasons.length || ''], ['Episodios', countEps(p) || '']] : [['Duración', fmtDur(p.duracion)]]),
           ['Calidad', quals.join(' · ')],
@@ -1026,7 +1026,7 @@ import { Cloud } from './auth.js';
           ['Subtítulos', (Array.isArray(p.subtitulos) ? p.subtitulos : []).map(s => s.n).join(', ')],
           ['Audio', Array.isArray(p.versiones) && p.versiones.length ? [(p.audioNombre || '').trim() || 'Original', ...p.versiones.map(x => x.n)].join(', ') : ''],
           ['Créditos', p.creditos]
-        ].filter(r => r[1]).map(([k, val]) => `<div><dt>${k}</dt><dd>${esc(val)}</dd></div>`).join('')}</dl>
+        ].filter(r => r[1]).map(([k, val, raw]) => `<div><dt>${k}</dt><dd>${raw || esc(val)}</dd></div>`).join('')}</dl>
         <div class="actions" style="margin-top:14px">
           ${live ? `<button class="btn ghost ${isFav(p.id) ? 'on' : ''}" id="fav">${favLabel()}</button>
           <button class="btn ghost" id="share">↗ Compartir</button>
@@ -1198,6 +1198,7 @@ import { Cloud } from './auth.js';
     const curDraft = editing ? drafts.find(x => x.id === editing) : null;
     const curPub = editing && !curDraft ? list.find(x => x.id === editing) : null;
     const curSerie = editing ? seriesL.find(x => x.id === editing) : null;
+    const sinMap = sr => JSON.stringify(Object.fromEntries(epsOf(sr).flatMap(t => t.episodios.filter(e => e.sinopsis).map(e => [t.n + 'x' + e.n, e.sinopsis]))));
     const serieText = sr => epsOf(sr).flatMap(t => t.episodios.flatMap(e => serversOf(e).map(sv => `${t.n}x${String(e.n).padStart(2, '0')} | ${e.titulo || ''} | ${sv.i || ''} | ${sv.u}${sv.n ? ' | ' + sv.n : ''}`))).join('\n');
     const cur = curDraft || curPub || null;
     const modoIni = curDraft ? 'borrador' : curPub && curPub.publicarEn > now ? 'programar' : 'ahora';
@@ -1268,6 +1269,7 @@ import { Cloud } from './auth.js';
         </div>
         <label>Género(s) <small class="muted">separados por coma; solo el primero cuenta: es la categoría de la serie</small><input name="generos" maxlength="120" value="${esc(curSerie?.generos ?? '')}"></label>
         <label>Sinopsis<textarea name="sinopsis" rows="4" maxlength="1500">${esc(curSerie?.sinopsis ?? '')}</textarea></label>
+        <input type="hidden" name="epsin" value="${esc(curSerie ? sinMap(curSerie) : '{}')}">
         <label>Episodios * <small class="muted">una línea por servidor: <b>TEMPORADAxEPISODIO | Título | idioma | enlace</b>. Idioma: <b>lat</b> (Latino), <b>en</b> (English), <b>ensub</b> (English sub. español) o vacío. Para ofrecer varios idiomas del mismo episodio, repite la línea con otro idioma. Opcional: un 5.º campo con el nombre del servidor.</small><textarea name="episodios" rows="10" required spellcheck="false" placeholder="1x01 | Piloto | lat | https://…/ep1-latino.mp4&#10;1x01 | Pilot | en | https://…/ep1-en.mp4&#10;1x02 | Segundo episodio | lat | https://…/ep2.mp4">${esc(curSerie ? serieText(curSerie) : '')}</textarea></label>
         <label>Póster (enlace https a una imagen vertical) <small class="muted">si lo dejas vacío, se busca por título en TMDB</small><input name="poster" type="url" value="${esc(curSerie?.poster ?? '')}"></label>
         <label>Imagen de fondo para la portada <small class="muted">opcional, horizontal</small><input name="fondo" type="url" value="${esc(curSerie?.fondo ?? '')}"></label>
@@ -1398,6 +1400,8 @@ import { Cloud } from './auth.js';
           if (cal && !(Number(cal) >= 0 && Number(cal) <= 10)) return toast('La calificación va de 0 a 10.');
           const { errs, temporadas } = parseEps(g('episodios'));
           if (errs.length) return toast(errs[0]);
+          let sin = {}; try { sin = JSON.parse(sf.elements.epsin.value || '{}') || {}; } catch { }
+          temporadas.forEach(t => t.episodios.forEach(e => { const x = String(sin[t.n + 'x' + e.n] || '').trim(); if (x) e.sinopsis = x.slice(0, 400); }));
           if (!temporadas.length) return toast('Agrega al menos un episodio.');
           if (!g('poster') && !g('fondo') && hasTmdb()) {
             const t = await tmdbArt(g('titulo'), g('anio'), true);
@@ -1585,8 +1589,9 @@ import { Cloud } from './auth.js';
             const rows = cur.split('\n');
             const ts = [...new Set(rows.map(l => (l.trim().split('|')[0].trim().match(/^(?:s|t)?\s*(\d{1,2})\s*[xe]\s*\d{1,3}$/i) || [])[1]).filter(Boolean).map(Number))].filter(n => all.includes(n));
             const seas = await Promise.all(ts.map(n => tmdb('/tv/' + m.id + '/season/' + n).catch(() => null)));
-            const names = new Map();
-            seas.forEach((t, i) => t && (t.episodes || []).forEach(x => names.set(ts[i] + 'x' + x.episode_number, String(x.name || '').replace(/\|/g, '-').trim())));
+            const names = new Map(), sinNew = {};
+            seas.forEach((t, i) => t && (t.episodes || []).forEach(x => { names.set(ts[i] + 'x' + x.episode_number, String(x.name || '').replace(/\|/g, '-').trim()); if (x.overview) sinNew[ts[i] + 'x' + x.episode_number] = String(x.overview).replace(/\s+/g, ' ').trim().slice(0, 400); }));
+            sf.elements.epsin.value = JSON.stringify(sinNew); const nSin = Object.keys(sinNew).length;
             let n = 0;
             sf.elements.episodios.value = rows.map(l => {
               const c = l.split('|'), k = (c[0] || '').trim().match(/^(?:s|t)?\s*(\d{1,2})\s*[xe]\s*(\d{1,3})$/i);
@@ -1595,11 +1600,13 @@ import { Cloud } from './auth.js';
               if (!nm || (old && !/^episodio\s*\d+$/i.test(old))) return l;
               n++; c[1] = ' ' + nm + ' '; return c.join('|');
             }).join('\n');
-            note = n ? ` Puse el nombre oficial a ${n} episodio(s); los enlaces no cambiaron.` : ' Tus episodios ya tenían nombre; no cambié nada.';
+            note = (n ? ` Puse el nombre oficial a ${n} episodio(s); los enlaces no cambiaron.` : ' Tus episodios ya tenían nombre; no cambié nada.') + (nSin ? ` Cargué la sinopsis de ${nSin} episodio(s).` : '');
           } else if (want.length) {
             const seas = await Promise.all(want.map(n => tmdb('/tv/' + m.id + '/season/' + n).catch(() => null)));
             const lines = seas.flatMap((t, i) => t ? (t.episodes || []).map(x => `${want[i]}x${String(x.episode_number).padStart(2, '0')} | ${String(x.name || '').replace(/\|/g, '-').trim()} | lat | `) : []);
             setS('episodios', lines.join('\n'));
+            const sinNew = {}; seas.forEach((t, i) => t && (t.episodes || []).forEach(x => { if (x.overview) sinNew[want[i] + 'x' + x.episode_number] = String(x.overview).replace(/\s+/g, ' ').trim().slice(0, 400); }));
+            sf.elements.epsin.value = JSON.stringify(sinNew);
             note = lines.length ? ` Dejé ${lines.length} episodio(s) con su título: agrega el enlace al final de cada línea (y borra las que no subirás).` : '';
           }
           toast('Datos de TMDB cargados.' + note);
