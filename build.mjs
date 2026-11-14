@@ -11,6 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -205,7 +206,9 @@ const block = [
   SITE ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Pelipe.online', url: SITE + '/', inLanguage: 'es' })}</script>` : ''
 ].filter(Boolean).join('\n  ');
 html = html.replace(/<!--build:head-->[\s\S]*?<!--\/build:head-->/, `<!--build:head-->\n  ${block}\n  <!--/build:head-->`);
-if (SITE) html = html.replace(/(property="og:image" content=")[^"]*(")/, `$1${SITE}/og.jpg$2`);
+// La miniatura lleva ?v=huella: si cambias og.jpg, la dirección cambia sola y Facebook/WhatsApp la vuelven a descargar
+let ogV = ''; try { ogV = '?v=' + createHash('md5').update(fs.readFileSync(path.join(ROOT, 'og.jpg'))).digest('hex').slice(0, 8); } catch { }
+if (SITE) html = html.replace(/(property="og:image" content=")[^"]*(")/, `$1${SITE}/og.jpg${ogV}$2`);
 wr('index.html', html);
 
 console.log(`Listo: ${all.length} película(s) en catalogo.json, ${pub.length} página(s) en p/${SITE ? ', sitemap.xml y robots.txt' : ''}.`);
