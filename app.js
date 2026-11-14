@@ -572,7 +572,7 @@ import { Cloud } from './auth.js';
       const votadas = top([...list].filter(x => n(x.id, 'tot') > 0).sort((a, b) => n(b.id, 'tot') - n(a.id, 'tot') || (b.creado || 0) - (a.creado || 0)), x => ({ votos: n(x.id, 'tot') }));
       const semS = top([...serAll].sort((a, b) => n(b.id, 'sem') - n(a.id, 'sem') || n(b.id, 'tot') - n(a.id, 'tot') || (b.creado || 0) - (a.creado || 0)), () => ({}));
       r1.innerHTML = rowLocal('Top Pelipe Semanales 🎬', sem);
-      if (rs) rs.innerHTML = rowLocal('Top Series Semanales 📺', semS, '#/series');
+      if (rs) rs.innerHTML = rowLocal('Top Series Semanales 📺', semS);
       r2.innerHTML = rowLocal('10 más votadas', votadas);
     });
     rkPending = fillRank; // si la página se vuelve a dibujar antes de que se active, solo cuenta la última versión
