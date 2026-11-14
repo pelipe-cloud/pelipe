@@ -147,7 +147,7 @@ async function proximos() {
   const key = (process.env.TMDB_API_KEY || CFG.TMDB_API_KEY || '').trim();
   if (!key) return console.log('Próximas: sin clave de TMDB, se omite (ver README).');
   const hoy = new Date().toISOString().slice(0, 10);
-  try { const j = JSON.parse(rd('proximos.json')); if (j.actualizado === hoy && Array.isArray(j.series)) return console.log('Próximas: ya actualizadas hoy.'); } catch { }
+  try { const j = JSON.parse(rd('proximos.json')); if (j.actualizado === hoy && Array.isArray(j.series) && j.series.length) return console.log('Próximas: ya actualizadas hoy.'); } catch { }
   const base = (process.env.TMDB_URL || 'https://api.themoviedb.org/3').replace(/\/+$/, '');
   const headers = key.length > 40 ? { Authorization: `Bearer ${key}` } : {};
   const api = async (p, q = {}) => {
@@ -183,7 +183,14 @@ async function proximos() {
         api('/discover/tv', { include_adult: 'false', sort_by: 'popularity.desc', 'first_air_date.gte': hoy, 'first_air_date.lte': hasta, page: '1' })
       ]);
       const gmt = new Map((gt.genres || []).map(g => [g.id, g.name]));
-      for (const m of (dt.results || []).filter(m => m.poster_path && m.name && m.first_air_date).slice(0, 20)) {
+      let tv = dt.results || [];
+      // Las series se anuncian con menos antelación que las películas: si salen pocas, se amplía la búsqueda a 12 meses
+      if (tv.length < 6) {
+        const hasta2 = new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10);
+        try { tv = [...tv, ...((await api('/discover/tv', { sort_by: 'popularity.desc', 'first_air_date.gte': hoy, 'first_air_date.lte': hasta2, page: '1' })).results || []).filter(x => !tv.some(y => y.id === x.id))]; } catch { }
+      }
+      console.log(`Próximas (series): TMDB devolvió ${tv.length} candidata(s).`);
+      for (const m of tv.filter(m => m.poster_path && m.name && m.first_air_date).slice(0, 20)) {
         let trailer = '';
         try {
           const v = (await api(`/tv/${m.id}/videos`, { include_video_language: 'es,en,null' })).results || [];
