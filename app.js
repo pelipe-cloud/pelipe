@@ -643,8 +643,8 @@ import { Cloud } from './auth.js';
         <select name="genero"><option value="">Género</option>${gm.map(g => `<option value="${esc(g.name)}" ${norm(p.genero) === norm(g.name) ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select>
         <select name="anio"><option value="">Año</option>${years.map(y => `<option ${p.anio === y ? 'selected' : ''}>${esc(y)}</option>`).join('')}</select>
         <input type="hidden" name="orden" value="${esc(orden === 'recientes' ? '' : orden)}">
+        <div class="sorts" role="group" aria-label="Ordenar por">${[['recientes', SER ? 'Agregadas recientemente' : 'Publicadas recientemente'], ['anio', 'Año de estreno'], ['az', 'Título A–Z']].map(([v, t]) => `<button type="button" class="sort ${orden === v ? 'on' : ''}" data-o="${v}" aria-pressed="${orden === v}">${t}</button>`).join('')}</div>
       </form>
-      <div class="sorts" role="group" aria-label="Ordenar por">${[['recientes', SER ? 'Agregadas recientemente' : 'Publicadas recientemente'], ['anio', 'Año de estreno'], ['az', 'Título A–Z']].map(([v, t]) => `<button type="button" class="sort ${orden === v ? 'on' : ''}" data-o="${v}" aria-pressed="${orden === v}">${t}</button>`).join('')}</div>
       <p class="muted">${items.length} ${SER ? 'serie' : 'película'}${items.length === 1 ? '' : 's'}</p>
       ${items.length ? '<div class="grid" id="g"></div><div class="more" id="more"></div>' : `<p class="empty">${SER ? (p.q || p.genero || p.anio ? 'No hay series con esos criterios.' : 'Aún no hay series publicadas. Vuelve pronto.') : 'No hay películas con esos criterios.'}</p>`}</div>`;
     // Carga progresiva: 24 a la vez; el resto aparece al acercarte al final (o con el botón)
