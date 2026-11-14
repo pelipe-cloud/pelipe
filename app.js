@@ -987,11 +987,15 @@ import { Cloud } from './auth.js';
           <p class="servers-h">Elige servidor</p>
           ${QORD.filter(q => srvs.some(s => s.q === q)).map(q => `<div class="srv-group"><span class="srv-q">${esc(q)}</span><div class="srv-btns">${srvs.map((s, idx) => ({ s, idx })).filter(x => x.s.q === q).map(({ s, idx }, n) => `<button type="button" class="srv ${idx === 0 ? 'on' : ''}" data-k="${idx}" aria-label="${esc(q + ' ' + (IDIOMAS[s.i] || '') + ' ' + (s.n || 'Servidor ' + (n + 1)))}">${flagOf(s.i)}<span class="srv-t"><b>${esc(IDIOMAS[s.i] || 'Idioma original')}</b><small>${esc(s.n || 'Servidor ' + (n + 1))}</small></span></button>`).join('')}</div></div>`).join('')}
         </div>` : '';
+      // Series: idiomas como botones pequeños (solo si hay más de una opción; con una sola se muestra como etiqueta)
+      const srvPills = serie && srvs.length > 1 ? `<div class="eps-row" id="servers" role="group" aria-label="Idioma"><span class="eps-lb">Idioma</span><div class="seas">${srvs.map((s, k) => `<button type="button" class="sort ${k === 0 ? 'on' : ''}" data-k="${k}" aria-pressed="${k === 0}">${flagOf(s.i)}${esc(IDIOMAS[s.i] || 'Idioma original')}${srvs.filter(x => x.i === s.i).length > 1 ? ' · ' + esc(s.n || 'Servidor ' + (k + 1)) : ''}</button>`).join('')}</div></div>` : '';
+      const oneLang = serie && srvs.length === 1 && srvs[0].i ? `<span class="eps-chip">${flagOf(srvs[0].i)}${esc(IDIOMAS[srvs[0].i])}</span>` : '';
       // Temporadas y episodios (solo series)
       const epsPanel = serie ? (ep ? `<div class="eps" id="eps">
-          <div class="eps-h"><b class="eps-now">${esc(epTag)}${ep.titulo ? ' — ' + esc(ep.titulo) : ''}</b>
+          <div class="eps-h"><b class="eps-now">${esc(epTag)}${ep.titulo ? ' — ' + esc(ep.titulo) : ''}</b>${oneLang}
             <span class="eps-nav">${at > 0 ? `<a class="btn ghost sm" href="${epHref(flat[at - 1])}">‹ Anterior</a>` : ''}${at >= 0 && at < flat.length - 1 ? `<a class="btn sm" href="${epHref(flat[at + 1])}">Siguiente ▶</a>` : ''}</span></div>
-          ${seasons.length > 1 ? `<label class="eps-s">Temporada <select id="seasel">${seasons.map(t => `<option value="${t.n}" ${t.n === season.n ? 'selected' : ''}>Temporada ${t.n}</option>`).join('')}</select></label>` : ''}
+          ${srvPills}
+          ${seasons.length > 1 ? `<div class="eps-row" id="seasons" role="group" aria-label="Temporada"><span class="eps-lb">Temporada</span><div class="seas">${seasons.map(t => `<button type="button" class="sort ${t.n === season.n ? 'on' : ''}" data-t="${t.n}" aria-pressed="${t.n === season.n}">${t.n}</button>`).join('')}</div></div>` : ''}
           <div class="eps-list" role="list">${season.episodios.map(e => `<a role="listitem" class="ep ${e.n === ep.n ? 'on' : ''}" href="${epHref({ t: season.n, e: e.n })}" ${e.n === ep.n ? 'aria-current="true"' : ''}><b>${e.n}</b><span>${esc(e.titulo || 'Episodio ' + e.n)}</span></a>`).join('')}</div>
         </div>` : '<div class="notice slim"><p>Esta serie aún no tiene episodios disponibles.</p></div>') : '';
       const srvLabel = () => { const s = srvs[curSrv]; return s ? [serie ? epTag : '', s.q, IDIOMAS[s.i], s.n].filter(Boolean).join(' · ') : ''; };
@@ -1001,7 +1005,7 @@ import { Cloud } from './auth.js';
         ${first ? playerHtml(parseSource(first), coverOf(p)) : ''}
         <div class="resume" id="resume" hidden></div>
         <div class="pbar" id="pbar" hidden></div>
-        ${srvPanel}
+        ${serie ? '' : srvPanel}
         ${epsPanel}
         ${live ? reactHtml() : ''}
         ${gens.length ? `<div class="chips">${gens.slice(0, 1).map(g => `<a class="chip" href="${serie ? '#/series' : '#/catalogo'}?genero=${encodeURIComponent(g)}">${esc(g)}</a>`).join('')}</div>` : ''}
@@ -1036,15 +1040,15 @@ import { Cloud } from './auth.js';
         tmp.innerHTML = playerHtml(parseSource(s.u), coverOf(p));
         app.querySelector('.player').replaceWith(tmp.firstElementChild);
         curSrv = k;
-        app.querySelectorAll('#servers .srv').forEach(b => b.classList.toggle('on', Number(b.dataset.k) === k));
+        app.querySelectorAll('#servers [data-k]').forEach(b => { const on = Number(b.dataset.k) === k; b.classList.toggle('on', on); if (b.classList.contains('sort')) b.setAttribute('aria-pressed', on); });
         const rs = document.getElementById('resume'), pb = document.getElementById('pbar');
         rs.hidden = true; pb.hidden = true; pb.innerHTML = '';
         wireVideo(app, { ...p, url: s.u }, { track: live && (!serie || !!ep), startAt: t, keepPlaying: was, ep: serie && ep ? { t: season.n, e: ep.n } : null, next: serie && at >= 0 ? flat[at + 1] : null });
       };
-      const sea = document.getElementById('seasel');
-      if (sea) sea.onchange = () => { location.hash = epHref({ t: sea.value, e: 1 }); };
+      const seaBox = document.getElementById('seasons');
+      if (seaBox) seaBox.addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b && Number(b.dataset.t) !== season.n) location.hash = epHref({ t: b.dataset.t, e: 1 }); });
       const sp = document.getElementById('servers');
-      if (sp) sp.addEventListener('click', e => { const b = e.target.closest('.srv'); if (b) playSrv(Number(b.dataset.k)); });
+      if (sp) sp.addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) playSrv(Number(b.dataset.k)); });
       if (live) {
         setupReactions(p.id);
         const fav = document.getElementById('fav');
