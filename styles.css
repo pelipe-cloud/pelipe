@@ -60,7 +60,11 @@ h2{font-size:1.25rem;margin-bottom:14px}
 .card span{color:var(--mute);font-size:.82rem}
 
 /* filtros */
-.filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.sorts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.sort{padding:8px 14px;border-radius:999px;background:var(--bg2);color:var(--mute);border:1px solid var(--line);font:inherit;font-size:.9rem;cursor:pointer;min-height:40px}
+.sort:hover{color:var(--tx);border-color:var(--acc)}
+.sort.on{background:rgba(255,90,54,.16);border-color:var(--acc);color:var(--tx);font-weight:600}
 select{padding:9px 12px;border-radius:10px;background:var(--bg2);color:var(--tx);border:1px solid var(--line);font:inherit}
 .more{display:flex;justify-content:center;margin:28px 0}
 
@@ -238,7 +242,6 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:fle
   .scroller .card .badge,.grid .card .badge{font-size:.72rem;padding:2px 7px}
   .filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .filters select{width:100%;min-width:0;text-overflow:ellipsis}
-  .filters select:last-of-type{grid-column:1/-1}
   .ficha{grid-template-columns:1fr 1fr}
   #nav{-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
   .hero.slider{min-height:min(62vh,520px)}

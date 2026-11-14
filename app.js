@@ -642,8 +642,9 @@ import { Cloud } from './auth.js';
         <input type="hidden" name="hasta" value="${esc(p.hasta || '')}">
         <select name="genero"><option value="">Género</option>${gm.map(g => `<option value="${esc(g.name)}" ${norm(p.genero) === norm(g.name) ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select>
         <select name="anio"><option value="">Año</option>${years.map(y => `<option ${p.anio === y ? 'selected' : ''}>${esc(y)}</option>`).join('')}</select>
-        <select name="orden">${[['recientes', SER ? 'Agregadas recientemente' : 'Más recientes publicadas'], ['anio', 'Año de estreno'], ['az', 'Título A–Z']].map(([v, t]) => `<option value="${v}" ${orden === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
+        <input type="hidden" name="orden" value="${esc(orden === 'recientes' ? '' : orden)}">
       </form>
+      <div class="sorts" role="group" aria-label="Ordenar por">${[['recientes', SER ? 'Agregadas recientemente' : 'Publicadas recientemente'], ['anio', 'Año de estreno'], ['az', 'Título A–Z']].map(([v, t]) => `<button type="button" class="sort ${orden === v ? 'on' : ''}" data-o="${v}" aria-pressed="${orden === v}">${t}</button>`).join('')}</div>
       <p class="muted">${items.length} ${SER ? 'serie' : 'película'}${items.length === 1 ? '' : 's'}</p>
       ${items.length ? '<div class="grid" id="g"></div><div class="more" id="more"></div>' : `<p class="empty">${SER ? (p.q || p.genero || p.anio ? 'No hay series con esos criterios.' : 'Aún no hay series publicadas. Vuelve pronto.') : 'No hay películas con esos criterios.'}</p>`}</div>`;
     // Carga progresiva: 24 a la vez; el resto aparece al acercarte al final (o con el botón)
@@ -664,6 +665,12 @@ import { Cloud } from './auth.js';
         io.observe(more);
       }
     }
+    const sorts = app.querySelector('.sorts');
+    if (sorts) sorts.addEventListener('click', e => {
+      const bt = e.target.closest('.sort'); if (!bt) return;
+      const f = document.getElementById('f'); f.elements.orden.value = bt.dataset.o === 'recientes' ? '' : bt.dataset.o;
+      f.dispatchEvent(new Event('change', { bubbles: true }));
+    });
     document.getElementById('f').addEventListener('change', e => {
       const n = new URLSearchParams();
       for (const [k, v] of new FormData(e.currentTarget)) if (v) n.set(k, v);
