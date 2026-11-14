@@ -215,7 +215,7 @@ import { Cloud } from './auth.js';
   // Imágenes de TMDB al tamaño que se necesita (en el celular, más pequeñas = carga más rápida)
   const SMALL = !!(window.matchMedia && matchMedia('(max-width: 900px)').matches);
   const tmdbImg = (u, w) => /^https:\/\/image\.tmdb\.org\/t\/p\/w\d+\//.test(u || '') ? u.replace(/\/t\/p\/w\d+\//, `/t/p/w${w}/`) : u;
-  const cardLocal = p => `<a class="card" href="${p.href ? esc(p.href) : '#/ver/' + encodeURIComponent(p.id)}"><div class="poster">${httpsUrl(p.poster) ? `<img loading="lazy" src="${esc(tmdbImg(p.poster, SMALL ? 342 : 500))}" alt="${esc(p.titulo)}">` : ''}<i class="pl" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8.5 5.6v12.8a.8.8 0 0 0 1.2.7l10.2-6.4a.8.8 0 0 0 0-1.4L9.7 4.9a.8.8 0 0 0-1.2.7z"/></svg></i>${gensOf(p)[0] ? `<div class="badge">${esc(cap(gensOf(p)[0]))}</div>` : ''}${isSerie(p) ? `<div class="qs"><span class="badge q">${p.tag ? esc(p.tag) : 'SERIE'}</span></div>` : qualsOf(p).length ? `<div class="qs">${qBadges(p)}</div>` : ''}${p.pct ? `<div class="prog"><i style="width:${Math.max(4, Math.min(100, Math.round(p.pct)))}%"></i></div>` : ''}${p.rank ? `<div class="rank">${p.rank}</div>` : ''}</div><b>${esc(p.titulo)}</b><span>${esc(p.anio || '')}${p.votos ? ` · ♥ ${p.votos}` : ''}</span></a>`;
+  const cardLocal = p => `<a class="card" href="${p.href ? esc(p.href) : '#/ver/' + encodeURIComponent(p.id)}"><div class="poster">${httpsUrl(p.poster) ? `<img loading="lazy" src="${esc(tmdbImg(p.poster, SMALL ? 342 : 500))}" alt="${esc(p.titulo)}">` : ''}<i class="pl" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8.5 5.6v12.8a.8.8 0 0 0 1.2.7l10.2-6.4a.8.8 0 0 0 0-1.4L9.7 4.9a.8.8 0 0 0-1.2.7z"/></svg></i>${gensOf(p)[0] ? `<div class="badge">${esc(cap(gensOf(p)[0]))}</div>` : ''}${isSerie(p) ? `<div class="qs"><span class="badge q">${p.tag ? esc(p.tag) : 'SERIE'}</span>${p.tag ? '' : qBadges(p) || '<span class="badge q">HD</span>'}</div>` : qualsOf(p).length ? `<div class="qs">${qBadges(p)}</div>` : ''}${p.pct ? `<div class="prog"><i style="width:${Math.max(4, Math.min(100, Math.round(p.pct)))}%"></i></div>` : ''}${p.rank ? `<div class="rank">${p.rank}</div>` : ''}</div><b>${esc(p.titulo)}</b><span>${esc(p.anio || '')}${p.votos ? ` · ♥ ${p.votos}` : ''}</span></a>`;
   const rowLocal = (title, items, link) => items.length ? `<section class="row"><div class="row-h"><h2>${esc(title)}</h2>${link ? `<a href="${link}">Ver todo →</a>` : ''}</div><div class="scroller">${items.map(cardLocal).join('')}</div></section>` : '';
   const gridLocal = items => `<div class="grid">${items.map(cardLocal).join('')}</div>`;
   const gridRm = (items, attrs) => `<div class="grid">${items.map(p => `<div class="rm-wrap">${cardLocal(p)}<button class="rm" data-id="${esc(p.id)}" ${attrs}>Quitar</button></div>`).join('')}</div>`;
@@ -558,7 +558,7 @@ import { Cloud } from './auth.js';
         <div id="rk1"></div>
         <div id="rks"></div>
         <div id="rk2"></div>
-        ${rowLocal('Te recomendamos…', shuffle(list).slice(0, 10))}
+        ${rowLocal('Te recomendamos… 👌', shuffle(list).slice(0, 10))}
       </div>`;
     // Rankings por reacciones: se rellenan cuando llegan los conteos (en caché 30 min)
     // Se cuentan películas (100 más recientes) y series (50 más recientes) en la misma pasada
