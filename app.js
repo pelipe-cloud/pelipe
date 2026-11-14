@@ -1219,9 +1219,6 @@ import { Cloud } from './auth.js';
           <div id="srvlist">${(cur && serversOf(cur).length ? serversOf(cur) : [{ q: 'HD', i: 'lat', n: '', u: '' }]).map(srvRow).join('')}</div>
           <button type="button" class="btn ghost sm" id="addsrv">＋ Agregar servidor</button>
         </fieldset>
-        <label>Subtítulos <small class="muted">opcional; uno por línea: Idioma | enlace al .srt o .vtt (https, o ruta dentro de tu sitio como subs/es.srt). La persona decide si los activa.</small><textarea name="subtitulos" rows="3" placeholder="Español | subs/mi-pelicula-es.srt">${esc(linesOf(cur?.subtitulos))}</textarea></label>
-        <label>Otros audios <small class="muted">opcional; uno por línea: Nombre | enlace al video completo con ese audio (.mp4, .webm o .m3u8). El video de arriba es el audio principal.</small><textarea name="versiones" rows="3" placeholder="Inglés original | https://…/mi-pelicula-en.mp4">${esc(linesOf(cur?.versiones))}</textarea></label>
-        <label>Nombre del audio principal <small class="muted">opcional; si lo dejas vacío se llama “Original”</small><input name="audioNombre" maxlength="40" placeholder="Español latino" value="${v('audioNombre')}"></label>
         <label>Póster (enlace https a una imagen vertical) <small class="muted">si lo dejas vacío, se busca la portada oficial por título (TMDB)</small><input name="poster" type="url" value="${v('poster')}"></label>
         <label>Imagen de fondo para la portada <small class="muted">opcional, horizontal; vacío = también se busca en TMDB</small><input name="fondo" type="url" value="${v('fondo')}"></label>
         <label>Tráiler <small class="muted">opcional, enlace de YouTube o Vimeo</small><input name="trailer" type="url" value="${v('trailer')}"></label>
@@ -1237,6 +1234,13 @@ import { Cloud } from './auth.js';
         </fieldset>
         <div class="actions"><button class="btn">${cur ? 'Guardar cambios' : 'Publicar'}</button>${cur ? '<button type="button" class="btn ghost" id="cancel">Cancelar</button>' : ''}</div>
       </form>
+      ${hasTmdb() ? `<section class="panel wide" id="tsp">
+        <h2>Autocompletar serie desde TMDB (opcional)</h2>
+        <form class="newlist" id="tss"><input name="q" placeholder="Título de la serie…"><button class="btn sm">Buscar</button></form>
+        <div id="tsres"></div>
+        <label style="display:block;margin-top:10px">Temporadas para generar la lista de episodios <small class="muted">vacío = todas; o escribe por ejemplo 2 o 1-3</small><input id="tsn" maxlength="30" placeholder="todas"></label>
+        <p class="muted" style="font-size:.82rem;margin-top:10px">Rellena título, año, calificación, géneros, sinopsis, póster y fondo, y deja los episodios con sus títulos listos (una línea por episodio, sin enlace). Tú agregas el enlace del video de cada línea y confirmas la licencia.</p>
+      </section>` : ''}
       <form id="sf" class="panel wide pform" autocomplete="off">
         <h2>${curSerie ? 'Editar serie' : 'Nueva serie'}</h2>
         <label>Título *<input name="titulo" required maxlength="120" value="${esc(curSerie?.titulo ?? '')}"></label>
@@ -1318,10 +1322,6 @@ import { Cloud } from './auth.js';
       for (const [n, t] of [['poster', 'El póster'], ['fondo', 'La imagen de fondo']]) if (g(n) && !httpsUrl(g(n))) return toast(t + ' debe ser un enlace https.');
       if (g('trailer')) { const s = parseSource(g('trailer')); if (!s || !['youtube', 'vimeo'].includes(s.tipo)) return toast('El tráiler debe ser un enlace de YouTube o Vimeo.'); }
       if (!bor && ['cc', 'permiso'].includes(g('licencia')) && !g('creditos')) return toast('Indica los créditos o el enlace de la licencia.');
-      const subs = parseLines(f.elements.subtitulos.value, u => /\.(srt|vtt)$/i.test(u.split(/[?#]/)[0]) && !!safeAsset(u));
-      if (subs.bad) return toast('Subtítulos: usa “Idioma | enlace” con archivos .srt o .vtt (https o ruta del sitio).');
-      const vers = parseLines(f.elements.versiones.value, u => { const s = parseSource(u); return !!s && ['file', 'hls'].includes(s.tipo); });
-      if (vers.bad) return toast('Otros audios: usa “Nombre | enlace” con un .mp4, .webm o .m3u8 (https).');
       const cal = g('calificacion').replace(',', '.');
       if (cal && !(Number(cal) >= 0 && Number(cal) <= 10)) return toast('La calificación va de 0 a 10.');
       // Sin imágenes: 1.º la portada oficial buscada en TMDB por título (y año); 2.º la miniatura del video (YouTube / Internet Archive)
@@ -1332,7 +1332,7 @@ import { Cloud } from './auth.js';
         if (t && (t.poster || t.fondo)) { f.elements.poster.value = t.poster || ''; f.elements.fondo.value = t.fondo || ''; }
       }
       const id = editing || 'p' + Date.now().toString(36);
-      const d = { subtitulos: subs.ok, versiones: vers.ok, audioNombre: g('audioNombre'), calificacion: cal ? Number(Number(cal).toFixed(1)) : '', titulo: g('titulo'), anio: g('anio'), duracion: g('duracion'), generos: g('generos'), calidad: calidades[0] || '', calidades, servidores: rows, sinopsis: g('sinopsis'), poster: g('poster'), fondo: g('fondo'), trailer: g('trailer'), url: mainUrl, licencia: g('licencia'), creditos: g('creditos'), creado: modo === 'programar' ? when : (cur && (bor || (curPub && !(curPub.publicarEn > Date.now())))) ? (cur.creado || Date.now()) : Date.now(), publicarEn: when, actualizado: Date.now(), por: cur?.por || user.email };
+      const d = { subtitulos: cur?.subtitulos || [], versiones: cur?.versiones || [], audioNombre: cur?.audioNombre || '', calificacion: cal ? Number(Number(cal).toFixed(1)) : '', titulo: g('titulo'), anio: g('anio'), duracion: g('duracion'), generos: g('generos'), calidad: calidades[0] || '', calidades, servidores: rows, sinopsis: g('sinopsis'), poster: g('poster'), fondo: g('fondo'), trailer: g('trailer'), url: mainUrl, licencia: g('licencia'), creditos: g('creditos'), creado: modo === 'programar' ? when : (cur && (bor || (curPub && !(curPub.publicarEn > Date.now())))) ? (cur.creado || Date.now()) : Date.now(), publicarEn: when, actualizado: Date.now(), por: cur?.por || user.email };
       try {
         if (bor) { await Cloud.saveBorrador(id, d); if (curPub) await Cloud.deletePelicula(id); }
         else { await Cloud.savePelicula(id, d); if (curDraft) await Cloud.deleteBorrador(id); }
@@ -1513,6 +1513,65 @@ import { Cloud } from './auth.js';
           set('trailer', tr ? 'https://www.youtube.com/watch?v=' + tr.key : '');
           f.scrollIntoView({ behavior: 'smooth' });
         } catch (err) { toast('No se pudieron leer los datos de TMDB.'); }
+      });
+    }
+
+    // Autocompletar series desde TMDB: datos de la ficha + lista de episodios con sus títulos (sin enlaces)
+    const tss = document.getElementById('tss');
+    if (tss && sf) {
+      const setS = (n, val) => { sf.elements[n].value = val ?? ''; };
+      tss.addEventListener('submit', async e => {
+        e.preventDefault();
+        const q = tss.elements.q.value.trim();
+        if (!q) return;
+        const box = document.getElementById('tsres');
+        box.innerHTML = '<p class="muted">Buscando…</p>';
+        try {
+          const rs = (await tmdb('/search/tv', { query: q, include_adult: 'false' })).results.slice(0, 8);
+          box.innerHTML = rs.length
+            ? rs.map(m => `<div class="arow"><span><b>${esc(m.name)}</b> <span class="muted">${esc((m.first_air_date || '').slice(0, 4))}</span></span><button class="btn ghost sm" data-ts="${m.id}">Usar</button></div>`).join('')
+            : '<p class="muted">Sin resultados.</p>';
+        } catch (err) { box.innerHTML = '<p class="muted">No se pudo consultar TMDB. Revisa tu clave.</p>'; }
+      });
+      // "2" → [2]; "1-3" → [1,2,3]; "1,3" → [1,3]; vacío → todas
+      const pickSeasons = (txt, all) => {
+        const t = txt.trim();
+        if (!t) return all;
+        const out = new Set();
+        for (const part of t.split(/[,;\s]+/).filter(Boolean)) {
+          const r = part.match(/^(\d+)\s*-\s*(\d+)$/);
+          if (r) for (let i = Number(r[1]); i <= Number(r[2]) && i < 100; i++) out.add(i);
+          else if (/^\d+$/.test(part)) out.add(Number(part));
+        }
+        return all.filter(n => out.has(n));
+      };
+      document.getElementById('tsres').addEventListener('click', async e => {
+        const b = e.target.closest('[data-ts]');
+        if (!b) return;
+        b.disabled = true;
+        try {
+          const m = await tmdb('/tv/' + b.dataset.ts);
+          setS('titulo', m.name);
+          setS('anio', (m.first_air_date || '').slice(0, 4));
+          setS('calificacion', m.vote_count > 0 && m.vote_average ? m.vote_average.toFixed(1) : '');
+          setS('generos', (m.genres || []).map(x => x.name).join(', '));
+          setS('sinopsis', m.overview || '');
+          setS('poster', m.poster_path ? 'https://image.tmdb.org/t/p/w500' + m.poster_path : '');
+          setS('fondo', m.backdrop_path ? 'https://image.tmdb.org/t/p/w1280' + m.backdrop_path : '');
+          const all = (m.seasons || []).map(x => x.season_number).filter(n => n >= 1);
+          const want = pickSeasons(document.getElementById('tsn').value, all);
+          let note = '';
+          if (sf.elements.episodios.value.trim()) note = ' Ya tenías episodios escritos, no los toqué.';
+          else if (want.length) {
+            const seas = await Promise.all(want.map(n => tmdb('/tv/' + m.id + '/season/' + n).catch(() => null)));
+            const lines = seas.flatMap((t, i) => t ? (t.episodes || []).map(x => `${want[i]}x${String(x.episode_number).padStart(2, '0')} | ${String(x.name || '').replace(/\|/g, '-').trim()} | lat | `) : []);
+            setS('episodios', lines.join('\n'));
+            note = lines.length ? ` Dejé ${lines.length} episodio(s) con su título: agrega el enlace al final de cada línea (y borra las que no subirás).` : '';
+          }
+          toast('Datos de TMDB cargados.' + note);
+          sf.scrollIntoView({ behavior: 'smooth' });
+        } catch (err) { toast('No se pudieron leer los datos de TMDB.'); }
+        b.disabled = false;
       });
     }
   }
