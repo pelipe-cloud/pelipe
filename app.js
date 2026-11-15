@@ -698,7 +698,7 @@ import { Cloud } from './auth.js';
     const go = (t, o) => '#/proximas' + (t === 'series' || o === 'fecha' ? '?' + [t === 'series' ? 'tipo=series' : '', o === 'fecha' ? 'orden=fecha' : ''].filter(Boolean).join('&') : '');
     const pill = (txt, href, on) => `<a class="sort ${on ? 'on' : ''}" href="${href}" aria-current="${on ? 'true' : 'false'}">${txt}</a>`;
     app.innerHTML = `<div class="wrap">
-      <h1 style="margin-bottom:6px">${SER ? 'Próximas Series' : 'Próximas Películas'}</h1>
+      <h1 style="margin-bottom:6px">${SER ? 'Próximas Series' : 'Próximas en Cine'}</h1>
       <p class="muted" style="max-width:70ch;margin-bottom:16px">Los estrenos más populares que se acercan, en cines y plataformas. Aún no están disponibles para ver en Pelipe.online: es solo información.</p>
       <div class="filters prox-f">
         <div class="sorts" role="group" aria-label="Tipo">${pill('Películas', go('pelis', ORD), !SER)}${pill('Series', go('series', ORD), SER)}</div>
