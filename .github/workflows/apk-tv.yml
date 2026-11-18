@@ -1,7 +1,7 @@
 name: Crear APK para TV
 
 on:
-  workflow_dispatch:          # se lanza a mano: pestaña Actions → "Crear APK para TV" → Run workflow
+  workflow_dispatch:
   push:
     paths:
       - 'android-tv/**'
@@ -22,10 +22,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
-
-      - name: Instalar plataforma de Android
-        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - name: Preparar Android SDK (ya viene en el servidor)
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls "$ANDROID_HOME/platforms" || true
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
       - uses: gradle/actions/setup-gradle@v4
         with:
