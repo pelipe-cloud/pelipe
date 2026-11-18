@@ -47,7 +47,9 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
-        s.setUserAgentString(s.getUserAgentString() + " PelipeTV");
+        s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        // Permite inspeccionar la app desde Chrome del PC (chrome://inspect) para medir qué tarda al cargar un video
+        WebView.setWebContentsDebuggingEnabled(true);
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
