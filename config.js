@@ -1,4 +1,4 @@
-// Configuración de Pelipe.pm.
+// Configuración de Pelipe.online.
 window.CONFIG = {
   // --- Nube: películas, cuentas, listas y reacciones (obligatorio) ---
   // Crea un proyecto en Firebase y pega aquí su configuración web (pasos en el README).
