@@ -525,8 +525,7 @@ footer a{display:inline-block;padding:5px 0}
 
 /* ===== Dirección y reparto bajo la sinopsis ===== */
 .elenco{max-width:1120px;margin:0 auto;padding:16px 0 4px;text-align:center}
-.syn + .elenco{border-bottom:1px solid var(--line);padding-bottom:18px}
-.syn + .elenco + .ficha{border-top:0;margin-top:0}
+.ficha + .elenco{border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:6px}
 .el-h{display:flex;align-items:center;justify-content:center;gap:8px;margin:14px 0 10px;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--acc2);font-weight:700}
 .el-h:first-child{margin-top:4px}
 .el-h svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}

@@ -82,7 +82,7 @@
       sec.className = 'elenco';
       sec.dataset.k = id;
       sec.innerHTML = html(d);
-      const ref = th2.querySelector('.syn') || th2.querySelector('.ficha');
+      const ref = th2.querySelector('.ficha') || th2.querySelector('.syn'); // debajo de Género/Año/Duración…
       if (ref) ref.after(sec); else th2.appendChild(sec);
     } finally { busy = false; }
   }
