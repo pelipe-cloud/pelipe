@@ -519,5 +519,5 @@ footer a{display:inline-block;padding:5px 0}
 .player:fullscreen{max-width:none;width:100vw;height:100vh;aspect-ratio:auto;border-radius:0;border:0;background:#000}
 .player:fullscreen video{object-fit:contain}
 .player:fullscreen::after{top:3%;right:2.6%;width:clamp(28px,3.2vw,52px)}
-.player:fullscreen .pfs{right:36px;bottom:31px}
+.player:fullscreen .pfs{right:22px;bottom:76px;width:40px;height:40px;background:rgba(11,11,16,.55);border:1px solid rgba(255,255,255,.35)}
 .player:-webkit-full-screen{max-width:none;width:100vw;height:100vh;aspect-ratio:auto;border-radius:0;border:0;background:#000}
