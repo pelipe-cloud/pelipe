@@ -5,6 +5,7 @@
   const key = () => String(C().TMDB_API_KEY || '').trim();
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const MEM = new Map(); // título+año → promesa con los datos
+  const FALLO = new Map(); // título+año → cuándo falló (no se reintenta en 90 s, para no repetir consultas)
   const MAXCAST = 12;
 
   async function tm(path, params) {
@@ -19,26 +20,67 @@
     return r.json();
   }
 
+  // Texto comparable: sin tildes, mayúsculas ni signos
+  const nrm = x => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  // Quita lo que TMDB no conoce: (Extended), [HD], "Latino"…
+  const limpiar = t => {
+    const c = String(t).replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/\b(extended|latino|castellano|subtitulad[oa]|full hd|hd|1080p|720p|remastered)\b/gi, ' ').replace(/\s+/g, ' ').replace(/^[-–: ]+|[-–: ]+$/g, '').trim();
+    return c || String(t).trim();
+  };
+  // Elige el resultado que de verdad se parece (título y año), no solo el primero
+  function mejor(rs, q, anio) {
+    let best = null, bs = 0;
+    (rs || []).forEach((r, i) => {
+      const t1 = nrm(r.title || r.name), t2 = nrm(r.original_title || r.original_name);
+      let sc = 0;
+      if (t1 === q || t2 === q) sc += 10;
+      else if (q.length >= 4 && (t1.includes(q) || t2.includes(q) || (t1.length >= 4 && q.includes(t1)) || (t2.length >= 4 && q.includes(t2)))) sc += 5;
+      const ry = parseInt(String(r.release_date || r.first_air_date || '').slice(0, 4), 10);
+      if (anio && ry) { const d = Math.abs(ry - anio); sc += d === 0 ? 3 : d === 1 ? 2 : 0; }
+      sc -= i * 0.1;
+      if (sc > bs) { bs = sc; best = r; }
+    });
+    return bs >= 5 ? best : null;
+  }
+
+  async function buscarId(titulo, anio, serie) {
+    const tipo = serie ? 'tv' : 'movie';
+    const yk = serie ? 'first_air_date_year' : 'year';
+    const limpio = limpiar(titulo);
+    const q = nrm(limpio);
+    const intentos = [[limpio, true], [limpio, false]];
+    if (nrm(titulo) !== q) intentos.push([titulo, false]);
+    const corto = limpio.split(':')[0].trim();
+    if (corto.length >= 3 && corto !== limpio) intentos.push([corto, true], [corto, false]);
+    for (const [txt, conAnio] of intentos) {
+      if (conAnio && !anio) continue;
+      const rs = (await tm('/search/' + tipo, { query: txt, include_adult: 'false', ...(conAnio ? { [yk]: anio } : {}) })).results || [];
+      const r = mejor(rs, q, parseInt(anio, 10) || 0);
+      if (r) return r.id;
+    }
+    return 0;
+  }
+
   async function datos(titulo, anio, serie) {
     const k = (serie ? 'tv:' : 'm:') + titulo + '|' + anio;
-    try { const c = sessionStorage.getItem('elenco:' + k); if (c) return JSON.parse(c); } catch (_) { }
+    try { const c = sessionStorage.getItem('elenco2:' + k); if (c) return JSON.parse(c); } catch (_) { }
     if (MEM.has(k)) return MEM.get(k);
+    if (FALLO.has(k) && Date.now() - FALLO.get(k) < 90000) return null;
     const pr = (async () => {
       const tipo = serie ? 'tv' : 'movie';
-      const yk = serie ? 'first_air_date_year' : 'year';
-      let rs = (await tm('/search/' + tipo, { query: titulo, include_adult: 'false', [yk]: anio })).results || [];
-      if (!rs.length && anio) rs = (await tm('/search/' + tipo, { query: titulo, include_adult: 'false' })).results || [];
-      if (!rs.length) return null;
-      const id = rs[0].id;
+      let id = 0;
+      try { id = await buscarId(titulo, anio, serie); } catch (_) { id = 0; }
+      if (!id) { MEM.delete(k); FALLO.set(k, Date.now()); return null; }
       const cr = await tm('/' + tipo + '/' + id + '/credits');
       const dir = serie
         ? ((await tm('/tv/' + id)).created_by || []).map(x => ({ n: x.name, f: x.profile_path, r: 'Creación' }))
         : (cr.crew || []).filter(x => x.job === 'Director').map(x => ({ n: x.name, f: x.profile_path, r: 'Dirección' }));
       const rep = (cr.cast || []).slice(0, MAXCAST).map(x => ({ n: x.name, f: x.profile_path, r: x.character || '' }));
       const out = { dir: dir.slice(0, 3), rep };
-      try { sessionStorage.setItem('elenco:' + k, JSON.stringify(out)); } catch (_) { }
+      if (!out.dir.length && !out.rep.length) { MEM.delete(k); FALLO.set(k, Date.now()); return null; }
+      try { sessionStorage.setItem('elenco2:' + k, JSON.stringify(out)); } catch (_) { }
       return out;
-    })().catch(() => null);
+    })().catch(() => { MEM.delete(k); FALLO.set(k, Date.now()); return null; });
     MEM.set(k, pr);
     return pr;
   }
