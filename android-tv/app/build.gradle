@@ -1,0 +1,57 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Firma fija: si existe pelipe.jks (lo crea el workflow desde el secreto KEYSTORE_B64), todas las
+// compilaciones se firman con la MISMA llave. Así la app se actualiza encima sin desinstalar
+// y el código de acceso sigue ligado al mismo dispositivo.
+def ks = file('../pelipe.jks')
+
+android {
+    namespace 'online.pelipe.tv'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'online.pelipe.tv'
+        minSdk 21
+        targetSdk 34
+        versionCode 7
+        versionName '2.5'
+    }
+
+    signingConfigs {
+        pelipe {
+            if (ks.exists()) {
+                storeFile ks
+                storePassword 'pelipe-ks-2026'
+                keyAlias 'pelipe'
+                keyPassword 'pelipe-ks-2026'
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            if (ks.exists()) {
+                signingConfig signingConfigs.pelipe
+            }
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'androidx.media3:media3-exoplayer:1.3.1'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.3.1'
+    implementation 'androidx.media3:media3-ui:1.3.1'
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+}
