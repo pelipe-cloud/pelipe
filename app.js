@@ -219,7 +219,8 @@ import { Cloud } from './auth.js';
   const rowLocal = (title, items, link) => items.length ? `<section class="row"><div class="row-h"><h2>${esc(title)}</h2>${link ? `<a href="${link}">Ver todo →</a>` : ''}</div><div class="scroller">${items.map(cardLocal).join('')}</div></section>` : '';
   const gridLocal = items => `<div class="grid">${items.map(cardLocal).join('')}</div>`;
   const gridRm = (items, attrs) => `<div class="grid">${items.map(p => `<div class="rm-wrap">${cardLocal(p)}<button class="rm" data-id="${esc(p.id)}" ${attrs}>Quitar</button></div>`).join('')}</div>`;
-  const loading = () => { app.innerHTML = '<div class="wrap"><div class="skel"></div></div>'; };
+  // En el inicio, el primer banner ya viene escrito en el HTML (lo genera build.mjs): no se tapa con el esqueleto de carga
+  const loading = () => { if (app.querySelector('[data-pre]') && /^#?\/?$/.test(location.hash)) return; app.innerHTML = '<div class="wrap"><div class="skel"></div></div>'; };
   const setNav = r => document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('on', a.dataset.r === r));
 
   function openModal(html) {

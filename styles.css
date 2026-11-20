@@ -454,7 +454,7 @@ footer a{display:inline-block;padding:5px 0}
 .tag,.card .badge.q,.chip.q,.srv-q,.btn:not(.ghost){color:#17110e}
 .logo-dom{font-size:.55em;letter-spacing:.06em;margin-left:.04em;align-self:flex-end;padding-bottom:.08em}
 /* Evita el salto del pie de página mientras carga el contenido (mejora CLS) */
-#app:empty,#app:has(>.wrap>.skel){min-height:100svh}
+#app:empty,#app:has(>.wrap>.skel),#app:has(>[data-pre]),#app:has(>style+[data-pre]){min-height:100svh}
 
 /* ===== Series: temporadas y episodios ===== */
 .eps{max-width:1000px;margin:18px auto 0;text-align:left}
@@ -546,3 +546,11 @@ footer a{display:inline-block;padding:5px 0}
 .react-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
 .react-btns .btn{padding:9px 15px;font-size:.92rem;white-space:nowrap}
 .theater .react{justify-content:center;flex-wrap:wrap}
+
+/* El banner del inicio viene escrito en el HTML; si se entra a otra página, no se muestra */
+.nopre [data-pre]{display:none}
+
+/* Reserva el espacio del botón de cuenta (Entrar/avatar) para que la cabecera no se mueva cuando carga el JavaScript */
+#acct{min-height:38px;min-width:98px;justify-content:flex-end}
+@media(min-width:721px){#acct{min-width:181px}}
+@media(min-width:1501px){#acct{min-width:231px}}

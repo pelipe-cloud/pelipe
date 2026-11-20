@@ -5,7 +5,7 @@
 //   catalogo.json      → lo lee el inicio (cero lecturas de Firestore por visita)
 //   p/<id>/index.html  → una página por película (Google la indexa; vista previa al compartir)
 //   sitemap.xml, robots.txt
-//   index.html         → solo lo que está entre <!--build:head--> y <!--/build:head-->, y la URL de og:image
+//   index.html         → lo que está entre <!--build:head--> y <!--/build:head-->, el primer banner entre <!--build:hero--> y <!--/build:hero-->, y la URL de og:image
 // Sin dependencias: necesita Node 18 o superior. Lee las películas por la API pública de Firestore
 // (las reglas del README ya permiten leer "peliculas" sin iniciar sesión).
 import fs from 'node:fs';
@@ -231,6 +231,22 @@ const block = [
   SITE ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Pelipe.online', url: SITE + '/', inLanguage: 'es' })}</script>` : ''
 ].filter(Boolean).join('\n  ');
 html = html.replace(/<!--build:head-->[\s\S]*?<!--\/build:head-->/, `<!--build:head-->\n  ${block}\n  <!--/build:head-->`);
+// Primer banner del inicio ya escrito en el HTML: la imagen y el texto se pintan sin esperar al JavaScript (mejora el LCP).
+// app.js lo reemplaza por el carrusel real en cuanto carga; el marcado usa las mismas clases, así que no se nota el cambio.
+const fmtDur = m => { m = Number(m); if (!m) return ''; const h = Math.floor(m / 60), r = m % 60; return h ? `${h} h${r ? ' ' + r + ' min' : ''}` : `${r} min`; };
+let pre = '';
+if (first) {
+  const bg = hero || '';
+  const w = n => esc(bg.replace(/\/t\/p\/w\d+\//, `/t/p/w${n}/`));
+  const isT = /image\.tmdb\.org\/t\/p\/w\d+\//.test(bg);
+  const g0 = String(first.generos || '').split(',').map(s => s.trim()).filter(Boolean)[0] || '';
+  const style = bg ? (isT
+    ? `<style>#pre-slider .hero-bg{background-image:url('${w(780)}')}@media(min-width:901px){#pre-slider .hero-bg{background-image:url('${w(1280)}')}}</style>`
+    : `<style>#pre-slider .hero-bg{background-image:url('${esc(bg)}')}</style>`) : '';
+  pre = `${style}<section class="hero slider" id="pre-slider" data-pre aria-label="Películas recientes"><article class="slide on">${bg ? `<div class="hero-bg ${https(first.fondo) ? '' : 'blur'}"></div>` : ''}<div class="hero-in"><span class="tag">Lo más nuevo</span><h1>${esc(first.titulo)}</h1><div class="meta-line"><span>${esc(first.anio || '')}</span>${first.duracion ? `<span>${esc(fmtDur(first.duracion))}</span>` : ''}<span class="chip q">HD</span>${g0 ? `<span class="chip">${esc(g0.charAt(0).toUpperCase() + g0.slice(1))}</span>` : ''}</div><p>${esc(first.sinopsis || '')}</p><div class="actions"><a class="btn" href="#/ver/${encodeURIComponent(first.id)}">▶ Ver película</a></div></div></article></section>`;
+}
+if (/<!--build:hero-->/.test(html)) html = html.replace(/<!--build:hero-->[\s\S]*?<!--\/build:hero-->/, `<!--build:hero-->${pre}<!--/build:hero-->`);
+else console.warn('Aviso: index.html no tiene <!--build:hero--> dentro de <main>; no se escribe el banner del inicio.');
 // La miniatura lleva ?v=huella: si cambias og.jpg, la dirección cambia sola y Facebook/WhatsApp la vuelven a descargar
 let ogV = ''; try { ogV = '?v=' + createHash('md5').update(fs.readFileSync(path.join(ROOT, 'og.jpg'))).digest('hex').slice(0, 8); } catch { }
 if (SITE) html = html.replace(/(property="og:image" content=")[^"]*(")/, `$1${SITE}/og.jpg${ogV}$2`);
