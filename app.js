@@ -536,7 +536,7 @@ import { Cloud } from './auth.js';
     }).filter(Boolean);
     const shuffle = a => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
     app.innerHTML = `
-      <section class="hero slider" id="slider" aria-roledescription="carrusel" aria-label="Películas recientes">
+      <section data-nosnippet class="hero slider" id="slider" aria-roledescription="carrusel" aria-label="Películas recientes">
         ${slides.map((f, i) => { const bg = httpsUrl(f.fondo) ? tmdbImg(f.fondo, SMALL ? 780 : 1280) : httpsUrl(f.poster); return `<article class="slide ${i === 0 ? 'on' : ''}" ${i ? 'inert' : ''}>
           ${bg ? `<div class="hero-bg ${httpsUrl(f.fondo) ? '' : 'blur'}" ${i === 0 ? `style="background-image:url('${esc(bg)}')"` : `data-bg="${esc(bg)}"`}></div>` : ''}
           <div class="hero-in">
@@ -553,7 +553,7 @@ import { Cloud } from './auth.js';
         ${slides.length > 1 ? `<button class="arrow prev" aria-label="Anterior">‹</button><button class="arrow next" aria-label="Siguiente">›</button>
         <div class="dots">${slides.map((_, i) => `<button class="${i === 0 ? 'on' : ''}" aria-label="Película ${i + 1}"></button>`).join('')}</div>` : ''}
       </section>
-      <div class="wrap">
+      <div class="wrap" data-nosnippet>
         ${rowLocal('Continuar viendo 👀', cont)}
         ${rowLocal('Subidas recientes 🍿', recientes)}
         <div id="rk1"></div>
