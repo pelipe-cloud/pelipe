@@ -33,7 +33,7 @@ jobs:
         env:
           MAX: ${{ github.event.inputs.max || '40' }}
           SOLO: ${{ github.event.inputs.solo || '' }}
-        run: node .github/scripts/teasers.mjs
+        run: node teasers.mjs
       - name: Subir a R2
         env:
           RCLONE_CONFIG_R2_TYPE: s3
