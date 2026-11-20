@@ -1,0 +1,50 @@
+name: Crear teasers
+
+on:
+  workflow_dispatch:
+    inputs:
+      max:
+        description: "Maximo de teasers a crear en esta corrida"
+        default: "40"
+      solo:
+        description: "Solo titulos que contengan este texto (opcional)"
+        default: ""
+  schedule:
+    - cron: "17 */6 * * *"   # cada 6 horas revisa si hay titulos nuevos sin teaser
+
+concurrency:
+  group: teasers
+  cancel-in-progress: false
+
+jobs:
+  teasers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar ffmpeg y rclone
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg rclone
+      - name: Crear teasers que faltan
+        env:
+          MAX: ${{ github.event.inputs.max || '40' }}
+          SOLO: ${{ github.event.inputs.solo || '' }}
+        run: node .github/scripts/teasers.mjs
+      - name: Subir a R2
+        env:
+          RCLONE_CONFIG_R2_TYPE: s3
+          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          RCLONE_CONFIG_R2_ACL: private
+        run: |
+          if ls out/*.mp4 >/dev/null 2>&1; then
+            rclone copy out r2:pelipe-videos/teasers --header-upload "Cache-Control: public, max-age=31536000" -v
+          else
+            echo "No hay teasers nuevos."
+          fi
