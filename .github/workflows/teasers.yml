@@ -44,7 +44,7 @@ jobs:
           RCLONE_CONFIG_R2_ACL: private
         run: |
           if ls out/*.mp4 >/dev/null 2>&1; then
-            rclone copy out r2:pelipe-videos/teasers --header-upload "Cache-Control: public, max-age=31536000" -v
+            rclone copy out r2:pelipe-videos/teasers -v
           else
             echo "No hay teasers nuevos."
           fi
