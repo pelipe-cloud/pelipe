@@ -519,6 +519,19 @@ footer a{display:inline-block;padding:5px 0}
 .player:hover .pfs,.pfs:focus-visible{opacity:.9}
 .pfs:hover,.pfs:focus-visible{opacity:1;background:rgba(255,255,255,.18);outline:0}
 @media(hover:none){.pfs{opacity:.9}}
+/* Adelantar / atrasar 10 s */
+.pskip{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:rgba(11,11,16,.5);border:1px solid rgba(255,255,255,.35);color:#fff;opacity:0;transition:opacity .15s,background .15s}
+.pskip svg{grid-area:1/1;width:30px;height:30px}
+.pskip span{grid-area:1/1;font-size:.62rem;font-weight:800;line-height:1;margin-top:1px}
+.pback{left:9%}.pfwd{right:9%}
+.player:hover .pskip,.pskip:focus-visible{opacity:.9}
+.pskip:hover,.pskip:focus-visible{opacity:1;background:rgba(11,11,16,.75);outline:0}
+@media(hover:none){.pskip{opacity:0}.player:active .pskip{opacity:.9}}
+.phint{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);z-index:4;padding:10px 18px;border-radius:999px;background:rgba(11,11,16,.7);color:#fff;font-weight:800;font-size:1.05rem;pointer-events:none;opacity:0;white-space:nowrap}
+.phint.on{animation:phint .8s ease-out}
+@keyframes phint{0%{opacity:0;transform:translate(-50%,-50%) scale(.9)}15%{opacity:1;transform:translate(-50%,-50%) scale(1)}70%{opacity:1}100%{opacity:0}}
+.player:fullscreen .pskip{width:64px;height:64px}
+.player:fullscreen .pskip svg{width:36px;height:36px}
 /* Chrome/Edge: oculta el botón de maximizar del propio video (queda solo el nuestro, que conserva la P) */
 .player video::-webkit-media-controls-fullscreen-button{display:none}
 .player:fullscreen{max-width:none;width:100vw;height:100vh;aspect-ratio:auto;border-radius:0;border:0;background:#000}
