@@ -142,7 +142,7 @@ import { Cloud } from './auth.js';
   const REPORTES = { no_carga: 'El video no carga', se_traba: 'Se corta, se traba o va lento', sin_audio: 'No se escucha / sin audio', audio_mal: 'Audio incorrecto o desfasado', subs_mal: 'Subtítulos mal, desfasados o no aparecen', imagen: 'Mala calidad de imagen', otro: 'Otro problema con la película' };
   const QORD = ['HD']; // una sola calidad: HD (las calidades antiguas —4K, 1080p, 720p…— pasan a HD)
   const nq = () => 'HD';
-  const IDIOMAS = { lat: 'Latino (México)', en: 'English', ensub: 'English (sub. español)' };
+  const IDIOMAS = { lat: 'Latino (México)', es: 'Castellano (España)', en: 'English', ensub: 'English (sub. español)' };
   const qRank = q => { const i = QORD.indexOf(q); return i < 0 ? 9 : i; };
   // Toda película se muestra como HD (las antiguas con otra calidad guardada siguen funcionando)
   const qualsOf = () => ['HD'];
@@ -158,6 +158,7 @@ import { Cloud } from './auth.js';
     const stripes = [0, 2.46, 4.92, 7.38, 9.85, 12.31, 14.77].map(y => `<rect y="${y}" width="24" height="1.23" fill="#b22234"/>`).join('');
     return {
       en: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="English"><rect width="24" height="16" fill="#fff"/>${stripes}<rect width="10.4" height="8.6" fill="#3c3b6e"/><g fill="#fff">${dots.join('')}</g></svg>`,
+      es: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="España"><rect width="24" height="16" fill="#aa151b"/><rect y="4" width="24" height="8" fill="#f1bf00"/></svg>`,
       lat: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="México"><rect width="8" height="16" fill="#006847"/><rect x="8" width="8" height="16" fill="#fff"/><rect x="16" width="8" height="16" fill="#ce1126"/><circle cx="12" cy="8" r="2.1" fill="#9b7a3a" opacity=".85"/></svg>`
     };
   })();
@@ -1176,7 +1177,7 @@ import { Cloud } from './auth.js';
   }
 
   // Una fila del formulario de servidores: calidad, idioma, nombre opcional y enlace
-  const srvRow = s => `<div class="srow"><div class="srow-top"><select class="si" aria-label="Idioma"><option value="lat" ${s.i === 'lat' ? 'selected' : ''}>Latino (México)</option><option value="en" ${s.i === 'en' ? 'selected' : ''}>English</option><option value="ensub" ${s.i === 'ensub' ? 'selected' : ''}>English (sub. español)</option><option value="" ${!s.i ? 'selected' : ''}>Sin indicar</option></select><input class="sn" maxlength="30" placeholder="Nombre (opcional)" value="${esc(s.n || '')}"><button type="button" class="btn ghost sm srow-rm" aria-label="Quitar este servidor" title="Quitar">✕</button></div><input class="su" type="url" placeholder="Enlace del video (https)" value="${esc(s.u || '')}"><p class="muted sinfo"></p></div>`;
+  const srvRow = s => `<div class="srow"><div class="srow-top"><select class="si" aria-label="Idioma"><option value="lat" ${s.i === 'lat' ? 'selected' : ''}>Latino (México)</option><option value="es" ${s.i === 'es' ? 'selected' : ''}>Castellano (España)</option><option value="en" ${s.i === 'en' ? 'selected' : ''}>English</option><option value="ensub" ${s.i === 'ensub' ? 'selected' : ''}>English (sub. español)</option><option value="" ${!s.i ? 'selected' : ''}>Sin indicar</option></select><input class="sn" maxlength="30" placeholder="Nombre (opcional)" value="${esc(s.n || '')}"><button type="button" class="btn ghost sm srow-rm" aria-label="Quitar este servidor" title="Quitar">✕</button></div><input class="su" type="url" placeholder="Enlace del video (https)" value="${esc(s.u || '')}"><p class="muted sinfo"></p></div>`;
 
   async function adminPage() {
     setNav('admin');
@@ -1271,7 +1272,7 @@ import { Cloud } from './auth.js';
         <label>Género(s) <small class="muted">separados por coma; solo el primero cuenta: es la categoría de la serie</small><input name="generos" maxlength="120" value="${esc(curSerie?.generos ?? '')}"></label>
         <label>Sinopsis<textarea name="sinopsis" rows="4" maxlength="1500">${esc(curSerie?.sinopsis ?? '')}</textarea></label>
         <input type="hidden" name="epsin" value="${esc(curSerie ? sinMap(curSerie) : '{}')}">
-        <label>Episodios * <small class="muted">una línea por servidor: <b>TEMPORADAxEPISODIO | Título | idioma | enlace</b>. Idioma: <b>lat</b> (Latino), <b>en</b> (English), <b>ensub</b> (English sub. español) o vacío. Para ofrecer varios idiomas del mismo episodio, repite la línea con otro idioma. Opcional: un 5.º campo con el nombre del servidor.</small><textarea name="episodios" rows="10" required spellcheck="false" placeholder="1x01 | Piloto | lat | https://…/ep1-latino.mp4&#10;1x01 | Pilot | en | https://…/ep1-en.mp4&#10;1x02 | Segundo episodio | lat | https://…/ep2.mp4">${esc(curSerie ? serieText(curSerie) : '')}</textarea></label>
+        <label>Episodios * <small class="muted">una línea por servidor: <b>TEMPORADAxEPISODIO | Título | idioma | enlace</b>. Idioma: <b>lat</b> (Latino), <b>es</b> (Castellano), <b>en</b> (English), <b>ensub</b> (English sub. español) o vacío. Para ofrecer varios idiomas del mismo episodio, repite la línea con otro idioma. Opcional: un 5.º campo con el nombre del servidor.</small><textarea name="episodios" rows="10" required spellcheck="false" placeholder="1x01 | Piloto | lat | https://…/ep1-latino.mp4&#10;1x01 | Pilot | en | https://…/ep1-en.mp4&#10;1x02 | Segundo episodio | lat | https://…/ep2.mp4">${esc(curSerie ? serieText(curSerie) : '')}</textarea></label>
         <label>Póster (enlace https a una imagen vertical) <small class="muted">si lo dejas vacío, se busca por título en TMDB</small><input name="poster" type="url" value="${esc(curSerie?.poster ?? '')}"></label>
         <label>Imagen de fondo para la portada <small class="muted">opcional, horizontal</small><input name="fondo" type="url" value="${esc(curSerie?.fondo ?? '')}"></label>
         <label>Licencia *<select name="licencia" required><option value="">Elige…</option>${Object.entries(LICENCIAS).map(([k, t]) => `<option value="${k}" ${curSerie?.licencia === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
@@ -1364,7 +1365,7 @@ import { Cloud } from './auth.js';
 
     // ---- Series: formulario ----
     const sf = document.getElementById('sf');
-    const LANG = { lat: 'lat', latino: 'lat', en: 'en', english: 'en', ingles: 'en', ensub: 'ensub', sub: 'ensub', subtitulado: 'ensub', '': '' };
+    const LANG = { lat: 'lat', latino: 'lat', es: 'es', castellano: 'es', espanol: 'es', españa: 'es', en: 'en', english: 'en', ingles: 'en', ensub: 'ensub', sub: 'ensub', subtitulado: 'ensub', '': '' };
     const parseEps = txt => {
       const temps = new Map(), errs = [];
       txt.split(/\n/).map(l => l.trim()).filter(Boolean).forEach((line, i) => {
@@ -1372,7 +1373,7 @@ import { Cloud } from './auth.js';
         const m = (c[0] || '').match(/^(?:s|t)?\s*(\d{1,2})\s*[xe]\s*(\d{1,3})$/i);
         if (!m || c.length < 4) return errs.push(`Línea ${i + 1}: usa “1x01 | Título | idioma | enlace”.`);
         const lang = LANG[norm(c[2])];
-        if (lang === undefined) return errs.push(`Línea ${i + 1}: idioma no válido (usa lat, en, ensub o déjalo vacío).`);
+        if (lang === undefined) return errs.push(`Línea ${i + 1}: idioma no válido (usa lat, es, en, ensub o déjalo vacío).`);
         if (!parseSource(c[3])) return errs.push(`Línea ${i + 1}: enlace de video no válido o no compatible (debe ser https).`);
         const T = Number(m[1]), E = Number(m[2]);
         if (!temps.has(T)) temps.set(T, new Map());
