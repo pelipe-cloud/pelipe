@@ -4,28 +4,55 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0b10">
 <title>Descargar Pelipe</title>
 <style>
-  :root{color-scheme:dark}
+  :root{color-scheme:dark;--acc:#ff5a36;--acc2:#ffb347}
+  *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:#0b0b10;color:#f2f2f7;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  main{min-height:100%;display:grid;place-content:center;justify-items:center;gap:14px;padding:24px;text-align:center}
-  h1{margin:0;font-size:clamp(2rem,7vw,3rem);color:#ff5a36;letter-spacing:.04em}
-  p{margin:0;color:#9a9ab0;max-width:34ch;line-height:1.5}
-  a.btn{display:inline-block;margin-top:6px;padding:14px 28px;border-radius:999px;background:#ff5a36;color:#fff;font-weight:700;text-decoration:none;font-size:1.05rem}
-  a.btn:focus,a.btn:hover{outline:3px solid #ffb347;outline-offset:3px}
-  small{color:#6c6c80}
+  /* Difuminado cálido como el inicio de la app */
+  body{background:radial-gradient(ellipse 70% 60% at 50% 42%,#35160f 0%,#14090c 55%,#0b0b10 100%)}
+  body::before{content:"";position:fixed;left:50%;top:42%;width:min(80vw,620px);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,90,54,.28),rgba(255,90,54,0) 65%);filter:blur(30px);animation:resp 4.5s ease-in-out infinite;pointer-events:none}
+  @keyframes resp{0%,100%{opacity:.55;transform:translate(-50%,-50%) scale(.94)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}}
+  main{position:relative;min-height:100%;display:grid;place-content:center;justify-items:center;gap:12px;padding:24px;text-align:center}
+  .word{display:flex;align-items:flex-end;justify-content:center;gap:.02em;font-size:clamp(3rem,13vw,5.4rem);font-weight:800;line-height:1;color:var(--acc);letter-spacing:.04em;text-shadow:0 0 28px rgba(255,90,54,.45)}
+  .word svg{height:1.12em;width:auto;margin-right:.06em;filter:drop-shadow(0 6px 10px rgba(0,0,0,.45)) drop-shadow(0 0 18px rgba(255,90,54,.35))}
+  .word>*{opacity:0;transform:translateY(34px) scale(.5);animation:in .6s cubic-bezier(.2,1.5,.4,1) forwards}
+  .word>*:nth-child(1){animation-delay:.15s}.word>*:nth-child(2){animation-delay:.3s}.word>*:nth-child(3){animation-delay:.42s}
+  .word>*:nth-child(4){animation-delay:.54s}.word>*:nth-child(5){animation-delay:.66s}.word>*:nth-child(6){animation-delay:.78s}
+  @keyframes in{to{opacity:1;transform:none}}
+  /* El play dentro de la P guiña */
+  .tri{transform-box:fill-box;transform-origin:center;animation:guino 4.2s ease-in-out 1.6s infinite}
+  @keyframes guino{0%,70%,100%{transform:scaleY(1)}76%{transform:scaleY(.08)}82%{transform:scaleY(.08)}92%{transform:scaleY(1.2)}}
+  .line{height:3px;width:min(260px,60vw);background:linear-gradient(90deg,transparent,var(--acc2),transparent);transform:scaleX(0);animation:ln .7s ease-out .95s forwards}
+  @keyframes ln{to{transform:scaleX(1)}}
+  .tag{margin:0;color:#9a9ab0;font-size:.74rem;font-weight:700;letter-spacing:.3em;opacity:0;animation:fd .6s ease-out 1.15s forwards}
+  p#msg{margin:10px 0 0;color:#c9c9d8;max-width:34ch;line-height:1.5;opacity:0;animation:fd .6s ease-out 1.5s forwards}
+  a.btn{display:inline-block;margin-top:4px;padding:14px 30px;border-radius:999px;background:var(--acc);color:#fff;font-weight:700;text-decoration:none;font-size:1.05rem;opacity:0;animation:fd .6s ease-out 1.7s forwards;box-shadow:0 8px 28px rgba(255,90,54,.35)}
+  a.btn:focus,a.btn:hover{outline:3px solid var(--acc2);outline-offset:3px}
+  small{color:#6c6c80;opacity:0;animation:fd .6s ease-out 1.9s forwards}
+  @keyframes fd{to{opacity:1}}
+  @media(prefers-reduced-motion:reduce){*,*::before{animation:none!important}.word>*,.tag,#msg,a.btn,small{opacity:1;transform:none}.line{transform:none}}
 </style>
 </head>
 <body>
 <main>
-  <h1>PELIPE</h1>
+  <div class="word" aria-label="Pelipe">
+    <svg viewBox="168 112 236 288" aria-hidden="true"><path fill="#ff5a36" fill-rule="evenodd" d="M168 112H292A112 112 0 0 1 292 336H240V400H168ZM240 176V272H292A48 48 0 0 0 292 176Z"/><path class="tri" fill="#ffb347" d="M258 197V251L302 224Z"/></svg>
+    <span>E</span><span>L</span><span>I</span><span>P</span><span>E</span>
+  </div>
+  <div class="line"></div>
+  <p class="tag">PELÍCULAS Y SERIES LIBRES</p>
   <p id="msg">Tu descarga empezará en un momento…</p>
   <a class="btn" id="dl" href="https://media.pelipe.online/pelipeapp.apk" autofocus>Descargar la app</a>
   <small>Para Android TV, Google TV y celulares Android</small>
 </main>
 <script>
-  // Inicia la descarga solo; si el navegador no lo permite, queda el botón
-  setTimeout(function () { location.href = document.getElementById('dl').href; }, 1200);
+  // Inicia la descarga sola (tras dejar ver la animación); si el navegador no lo permite, queda el botón
+  setTimeout(function () {
+    document.getElementById('msg').textContent = 'Descargando… si no empieza, pulsa el botón.';
+    location.href = document.getElementById('dl').href;
+  }, 3000);
 </script>
 </body>
 </html>
