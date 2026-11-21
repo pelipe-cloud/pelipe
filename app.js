@@ -142,7 +142,7 @@ import { Cloud } from './auth.js';
   const REPORTES = { no_carga: 'El video no carga', se_traba: 'Se corta, se traba o va lento', sin_audio: 'No se escucha / sin audio', audio_mal: 'Audio incorrecto o desfasado', subs_mal: 'Subtítulos mal, desfasados o no aparecen', imagen: 'Mala calidad de imagen', otro: 'Otro problema con la película' };
   const QORD = ['HD']; // una sola calidad: HD (las calidades antiguas —4K, 1080p, 720p…— pasan a HD)
   const nq = () => 'HD';
-  const IDIOMAS = { lat: 'Latino (México)', es: 'Castellano (España)', en: 'English', ensub: 'English (sub. español)' };
+  const IDIOMAS = { lat: 'Latino (México)', es: 'Castellano (España)', en: 'English', ensub: 'English (sub. español)', fr: 'Francés', it: 'Italiano', de: 'Alemán', pl: 'Polaco', pt: 'Portugués', ja: 'Japonés', zh: 'Chino' };
   const qRank = q => { const i = QORD.indexOf(q); return i < 0 ? 9 : i; };
   // Toda película se muestra como HD (las antiguas con otra calidad guardada siguen funcionando)
   const qualsOf = () => ['HD'];
@@ -158,6 +158,13 @@ import { Cloud } from './auth.js';
     const stripes = [0, 2.46, 4.92, 7.38, 9.85, 12.31, 14.77].map(y => `<rect y="${y}" width="24" height="1.23" fill="#b22234"/>`).join('');
     return {
       en: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="English"><rect width="24" height="16" fill="#fff"/>${stripes}<rect width="10.4" height="8.6" fill="#3c3b6e"/><g fill="#fff">${dots.join('')}</g></svg>`,
+      fr: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="Francia"><rect width="8" height="16" fill="#0055a4"/><rect x="8" width="8" height="16" fill="#fff"/><rect x="16" width="8" height="16" fill="#ef4135"/></svg>`,
+      it: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="Italia"><rect width="8" height="16" fill="#009246"/><rect x="8" width="8" height="16" fill="#fff"/><rect x="16" width="8" height="16" fill="#ce2b37"/></svg>`,
+      de: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="Alemania"><rect width="24" height="5.34" fill="#000"/><rect y="5.33" width="24" height="5.34" fill="#dd0000"/><rect y="10.66" width="24" height="5.34" fill="#ffce00"/></svg>`,
+      pl: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="Polonia"><rect width="24" height="8" fill="#fff"/><rect y="8" width="24" height="8" fill="#dc143c"/></svg>`,
+      pt: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="Portugal"><rect width="9.6" height="16" fill="#006600"/><rect x="9.6" width="14.4" height="16" fill="#ff0000"/><circle cx="9.6" cy="8" r="2.7" fill="#ffd700"/><circle cx="9.6" cy="8" r="1.5" fill="#fff"/></svg>`,
+      ja: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="Japón"><rect width="24" height="16" fill="#fff"/><circle cx="12" cy="8" r="4.8" fill="#bc002d"/></svg>`,
+      zh: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="China"><rect width="24" height="16" fill="#de2910"/><polygon fill="#ffde00" points="4.40,1.70 4.96,3.43 6.78,3.43 5.31,4.50 5.87,6.22 4.40,5.16 2.93,6.22 3.49,4.50 2.02,3.43 3.84,3.43"/><polygon fill="#ffde00" points="9.03,1.06 8.90,1.67 9.43,1.98 8.82,2.04 8.69,2.65 8.44,2.08 7.82,2.15 8.28,1.73 8.03,1.17 8.57,1.48"/><polygon fill="#ffde00" points="10.94,3.38 10.52,3.83 10.83,4.37 10.27,4.12 9.85,4.58 9.92,3.96 9.35,3.71 9.96,3.58 10.02,2.97 10.33,3.50"/><polygon fill="#ffde00" points="11.04,6.15 10.49,6.44 10.60,7.05 10.15,6.62 9.61,6.91 9.88,6.36 9.44,5.93 10.05,6.01 10.32,5.46 10.43,6.07"/><polygon fill="#ffde00" points="9.44,8.35 8.83,8.43 8.72,9.04 8.45,8.49 7.84,8.57 8.28,8.14 8.01,7.59 8.55,7.88 9.00,7.45 8.89,8.06"/></svg>`,
       es: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="España"><rect width="24" height="16" fill="#aa151b"/><rect y="4" width="24" height="8" fill="#f1bf00"/></svg>`,
       lat: `<svg class="flag" viewBox="0 0 24 16" role="img" aria-label="México"><rect width="8" height="16" fill="#006847"/><rect x="8" width="8" height="16" fill="#fff"/><rect x="16" width="8" height="16" fill="#ce1126"/><circle cx="12" cy="8" r="2.1" fill="#9b7a3a" opacity=".85"/></svg>`
     };
@@ -1177,7 +1184,7 @@ import { Cloud } from './auth.js';
   }
 
   // Una fila del formulario de servidores: calidad, idioma, nombre opcional y enlace
-  const srvRow = s => `<div class="srow"><div class="srow-top"><select class="si" aria-label="Idioma"><option value="lat" ${s.i === 'lat' ? 'selected' : ''}>Latino (México)</option><option value="es" ${s.i === 'es' ? 'selected' : ''}>Castellano (España)</option><option value="en" ${s.i === 'en' ? 'selected' : ''}>English</option><option value="ensub" ${s.i === 'ensub' ? 'selected' : ''}>English (sub. español)</option><option value="" ${!s.i ? 'selected' : ''}>Sin indicar</option></select><input class="sn" maxlength="30" placeholder="Nombre (opcional)" value="${esc(s.n || '')}"><button type="button" class="btn ghost sm srow-rm" aria-label="Quitar este servidor" title="Quitar">✕</button></div><input class="su" type="url" placeholder="Enlace del video (https)" value="${esc(s.u || '')}"><p class="muted sinfo"></p></div>`;
+  const srvRow = s => `<div class="srow"><div class="srow-top"><select class="si" aria-label="Idioma"><option value="lat" ${s.i === 'lat' ? 'selected' : ''}>Latino (México)</option><option value="es" ${s.i === 'es' ? 'selected' : ''}>Castellano (España)</option><option value="en" ${s.i === 'en' ? 'selected' : ''}>English</option><option value="ensub" ${s.i === 'ensub' ? 'selected' : ''}>English (sub. español)</option><option value="fr" ${s.i === 'fr' ? 'selected' : ''}>Francés</option><option value="it" ${s.i === 'it' ? 'selected' : ''}>Italiano</option><option value="de" ${s.i === 'de' ? 'selected' : ''}>Alemán</option><option value="pl" ${s.i === 'pl' ? 'selected' : ''}>Polaco</option><option value="pt" ${s.i === 'pt' ? 'selected' : ''}>Portugués</option><option value="ja" ${s.i === 'ja' ? 'selected' : ''}>Japonés</option><option value="zh" ${s.i === 'zh' ? 'selected' : ''}>Chino</option><option value="" ${!s.i ? 'selected' : ''}>Sin indicar</option></select><input class="sn" maxlength="30" placeholder="Nombre (opcional)" value="${esc(s.n || '')}"><button type="button" class="btn ghost sm srow-rm" aria-label="Quitar este servidor" title="Quitar">✕</button></div><input class="su" type="url" placeholder="Enlace del video (https)" value="${esc(s.u || '')}"><p class="muted sinfo"></p></div>`;
 
   async function adminPage() {
     setNav('admin');
@@ -1272,7 +1279,7 @@ import { Cloud } from './auth.js';
         <label>Género(s) <small class="muted">separados por coma; solo el primero cuenta: es la categoría de la serie</small><input name="generos" maxlength="120" value="${esc(curSerie?.generos ?? '')}"></label>
         <label>Sinopsis<textarea name="sinopsis" rows="4" maxlength="1500">${esc(curSerie?.sinopsis ?? '')}</textarea></label>
         <input type="hidden" name="epsin" value="${esc(curSerie ? sinMap(curSerie) : '{}')}">
-        <label>Episodios * <small class="muted">una línea por servidor: <b>TEMPORADAxEPISODIO | Título | idioma | enlace</b>. Idioma: <b>lat</b> (Latino), <b>es</b> (Castellano), <b>en</b> (English), <b>ensub</b> (English sub. español) o vacío. Para ofrecer varios idiomas del mismo episodio, repite la línea con otro idioma. Opcional: un 5.º campo con el nombre del servidor.</small><textarea name="episodios" rows="10" required spellcheck="false" placeholder="1x01 | Piloto | lat | https://…/ep1-latino.mp4&#10;1x01 | Pilot | en | https://…/ep1-en.mp4&#10;1x02 | Segundo episodio | lat | https://…/ep2.mp4">${esc(curSerie ? serieText(curSerie) : '')}</textarea></label>
+        <label>Episodios * <small class="muted">una línea por servidor: <b>TEMPORADAxEPISODIO | Título | idioma | enlace</b>. Idioma: <b>lat</b> (Latino), <b>es</b> (Castellano), <b>en</b> (English), <b>ensub</b> (English sub. español), <b>fr</b> (Francés), <b>it</b> (Italiano), <b>de</b> (Alemán), <b>pl</b> (Polaco), <b>pt</b> (Portugués), <b>ja</b> (Japonés), <b>zh</b> (Chino) o vacío. Para ofrecer varios idiomas del mismo episodio, repite la línea con otro idioma. Opcional: un 5.º campo con el nombre del servidor.</small><textarea name="episodios" rows="10" required spellcheck="false" placeholder="1x01 | Piloto | lat | https://…/ep1-latino.mp4&#10;1x01 | Pilot | en | https://…/ep1-en.mp4&#10;1x02 | Segundo episodio | lat | https://…/ep2.mp4">${esc(curSerie ? serieText(curSerie) : '')}</textarea></label>
         <label>Póster (enlace https a una imagen vertical) <small class="muted">si lo dejas vacío, se busca por título en TMDB</small><input name="poster" type="url" value="${esc(curSerie?.poster ?? '')}"></label>
         <label>Imagen de fondo para la portada <small class="muted">opcional, horizontal</small><input name="fondo" type="url" value="${esc(curSerie?.fondo ?? '')}"></label>
         <label>Licencia *<select name="licencia" required><option value="">Elige…</option>${Object.entries(LICENCIAS).map(([k, t]) => `<option value="${k}" ${curSerie?.licencia === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
@@ -1365,7 +1372,7 @@ import { Cloud } from './auth.js';
 
     // ---- Series: formulario ----
     const sf = document.getElementById('sf');
-    const LANG = { lat: 'lat', latino: 'lat', es: 'es', castellano: 'es', espanol: 'es', españa: 'es', en: 'en', english: 'en', ingles: 'en', ensub: 'ensub', sub: 'ensub', subtitulado: 'ensub', '': '' };
+    const LANG = { lat: 'lat', latino: 'lat', es: 'es', castellano: 'es', espanol: 'es', españa: 'es', en: 'en', english: 'en', ingles: 'en', ensub: 'ensub', sub: 'ensub', subtitulado: 'ensub', fr: 'fr', frances: 'fr', francés: 'fr', french: 'fr', it: 'it', italiano: 'it', italian: 'it', de: 'de', aleman: 'de', alemán: 'de', german: 'de', pl: 'pl', polaco: 'pl', polish: 'pl', pt: 'pt', portugues: 'pt', portugués: 'pt', portuguese: 'pt', ja: 'ja', japones: 'ja', japonés: 'ja', japanese: 'ja', zh: 'zh', chino: 'zh', chinese: 'zh', '': '' };
     const parseEps = txt => {
       const temps = new Map(), errs = [];
       txt.split(/\n/).map(l => l.trim()).filter(Boolean).forEach((line, i) => {
@@ -1373,7 +1380,7 @@ import { Cloud } from './auth.js';
         const m = (c[0] || '').match(/^(?:s|t)?\s*(\d{1,2})\s*[xe]\s*(\d{1,3})$/i);
         if (!m || c.length < 4) return errs.push(`Línea ${i + 1}: usa “1x01 | Título | idioma | enlace”.`);
         const lang = LANG[norm(c[2])];
-        if (lang === undefined) return errs.push(`Línea ${i + 1}: idioma no válido (usa lat, es, en, ensub o déjalo vacío).`);
+        if (lang === undefined) return errs.push(`Línea ${i + 1}: idioma no válido (usa lat, es, en, ensub, fr, it, de, pl, pt, ja, zh o déjalo vacío).`);
         if (!parseSource(c[3])) return errs.push(`Línea ${i + 1}: enlace de video no válido o no compatible (debe ser https).`);
         const T = Number(m[1]), E = Number(m[2]);
         if (!temps.has(T)) temps.set(T, new Map());
