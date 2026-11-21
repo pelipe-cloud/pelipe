@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Descargar Pelipe</title>
+<style>
+  :root{color-scheme:dark}
+  html,body{margin:0;height:100%;background:#0b0b10;color:#f2f2f7;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  main{min-height:100%;display:grid;place-content:center;justify-items:center;gap:14px;padding:24px;text-align:center}
+  h1{margin:0;font-size:clamp(2rem,7vw,3rem);color:#ff5a36;letter-spacing:.04em}
+  p{margin:0;color:#9a9ab0;max-width:34ch;line-height:1.5}
+  a.btn{display:inline-block;margin-top:6px;padding:14px 28px;border-radius:999px;background:#ff5a36;color:#fff;font-weight:700;text-decoration:none;font-size:1.05rem}
+  a.btn:focus,a.btn:hover{outline:3px solid #ffb347;outline-offset:3px}
+  small{color:#6c6c80}
+</style>
+</head>
+<body>
+<main>
+  <h1>PELIPE</h1>
+  <p id="msg">Tu descarga empezará en un momento…</p>
+  <a class="btn" id="dl" href="https://media.pelipe.online/pelipeapp.apk" autofocus>Descargar la app</a>
+  <small>Para Android TV, Google TV y celulares Android</small>
+</main>
+<script>
+  // Inicia la descarga solo; si el navegador no lo permite, queda el botón
+  setTimeout(function () { location.href = document.getElementById('dl').href; }, 1200);
+</script>
+</body>
+</html>
