@@ -21,7 +21,27 @@
     b.innerHTML = ICON;
     p.appendChild(b);
   }
-  const buscar = () => document.querySelectorAll('.player').forEach(mejorar);
+  // La "P" de marca de agua (con su play, que guiña cada par de minutos)
+  const P_SVG = '<svg viewBox="168 112 236 288" aria-hidden="true"><path fill="#ff5a36" fill-rule="evenodd" d="M168 112H292A112 112 0 0 1 292 336H240V400H168ZM240 176V272H292A48 48 0 0 0 292 176Z"/><path class="tri" fill="#ffb347" d="M258 197V251L302 224Z"/></svg>';
+  function marca(p) {
+    if (p.querySelector('.pmark')) return;
+    const m = document.createElement('span');
+    m.className = 'pmark';
+    m.setAttribute('aria-hidden', 'true');
+    m.innerHTML = P_SVG;
+    p.appendChild(m);
+  }
+  function guinar() {
+    document.querySelectorAll('.pmark').forEach(m => {
+      m.classList.remove('wink');
+      void m.getBoundingClientRect(); // reinicia la animación
+      m.classList.add('wink');
+      setTimeout(() => m.classList.remove('wink'), 900);
+    });
+  }
+  setTimeout(guinar, 15000);          // primer guiño poco después de abrir el video
+  setInterval(guinar, 120000);        // luego cada 2 minutos
+  const buscar = () => document.querySelectorAll('.player').forEach(p => { marca(p); mejorar(p); });
   new MutationObserver(buscar).observe(document.documentElement, { childList: true, subtree: true });
   buscar();
 
