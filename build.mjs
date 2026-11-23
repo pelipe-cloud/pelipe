@@ -129,7 +129,8 @@ ${p.creditos ? `<p class="lic">${esc(p.creditos)}</p>` : ''}
 </div>
 </article>
 </main>
-<footer><div class="foot-l"><p>Pelipe.online es un proyecto personal sin fines de lucro. Todas las películas y series publicadas son obras propias, de dominio público o con licencia libre.</p></div></footer>
+<footer><div class="foot-l"><a class="apkbtn" href="/app/" aria-label="Descargar la app de Pelipe para TV, Chromecast y celulares"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="30" height="20" rx="3"/><path d="M13 34h10M18 28v6"/><rect x="33" y="17" width="12" height="23" rx="3" fill="#14141c"/><path d="M37.5 36.5h3"/><path d="M14 14.5l8 3.5-8 3.5z" fill="currentColor" stroke="none"/></svg><span><b>¡Ya estamos en APK!</b><small>TV · Chromecast · Celulares</small></span><span class="go">›</span>
+    </a><p>Pelipe.online es un proyecto personal sin fines de lucro. Todas las películas y series publicadas son obras propias, de dominio público o con licencia libre.</p></div></footer>
 </body>
 </html>
 `;
