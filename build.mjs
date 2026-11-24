@@ -229,7 +229,7 @@ const block = [
   hero ? (/image\.tmdb\.org\/t\/p\/w\d+\//.test(hero)
     ? `<link rel="preload" href="${esc(hero.replace(/\/t\/p\/w\d+\//, '/t/p/w780/'))}" as="image" fetchpriority="high" media="(max-width: 900px)">\n  <link rel="preload" href="${esc(hero.replace(/\/t\/p\/w\d+\//, '/t/p/w1280/'))}" as="image" fetchpriority="high" media="(min-width: 901px)">`
     : `<link rel="preload" href="${esc(hero)}" as="image" fetchpriority="high">`) : '',
-  SITE ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Pelipe.online', url: SITE + '/', inLanguage: 'es' })}</script>` : ''
+  SITE ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': [{ '@type': 'WebSite', '@id': SITE + '/#sitio', name: 'Pelipe', alternateName: ['Pelipe.online'], url: SITE + '/', inLanguage: 'es', description: 'Pelipe: películas y series libres en español, para ver en la web, en TV, Chromecast y celulares.', publisher: { '@id': SITE + '/#org' } }, { '@type': 'Organization', '@id': SITE + '/#org', name: 'Pelipe', alternateName: ['Pelipe.online'], url: SITE + '/', logo: { '@type': 'ImageObject', url: SITE + '/icon-512.png', width: 512, height: 512 } }] }).replace(/</g, '\\u003c')}</script>` : ''
 ].filter(Boolean).join('\n  ');
 html = html.replace(/<!--build:head-->[\s\S]*?<!--\/build:head-->/, `<!--build:head-->\n  ${block}\n  <!--/build:head-->`);
 // Primer banner del inicio ya escrito en el HTML: la imagen y el texto se pintan sin esperar al JavaScript (mejora el LCP).
