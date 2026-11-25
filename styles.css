@@ -647,3 +647,9 @@ footer>.apkbtn{margin-left:auto;align-self:center}
 .pnext-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .3s linear}
 .pnext-b{display:flex;gap:8px}
 .pnext-b .btn{flex:1;justify-content:center}
+
+/* Botón de pantalla completa más grande y un poco más arriba en pantallas grandes */
+@media(min-width:721px){.pfs{width:46px;height:46px;right:27px;bottom:46px}.pfs svg{width:25px;height:25px}}
+/* Evita que el video en pantalla completa tape lo que aparece encima (caja de siguiente episodio) hasta mover el mouse */
+.player video{transform:translateZ(0)}
+.pnext{isolation:isolate}
