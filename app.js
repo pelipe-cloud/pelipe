@@ -16,6 +16,12 @@ import { Cloud } from './auth.js';
   const ms = t => (t && typeof t.toMillis === 'function') ? t.toMillis() : Number(t) || 0;
   const fmtDur = m => { m = Number(m); if (!m) return ''; const h = Math.floor(m / 60), r = m % 60; return h ? `${h} h${r ? ' ' + r + ' min' : ''}` : `${r} min`; };
   const fmtT = s => { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
+  // Marcas de tiempo (intro / inicio de créditos): "1:30", "1:02:30" o segundos → segundos
+  const parseT = x => { x = String(x == null ? '' : x).trim(); if (!x) return NaN; const a = x.split(':').map(Number); if (a.length > 3 || a.some(n => !isFinite(n) || n < 0)) return NaN; return a.reduce((t, n) => t * 60 + n, 0); };
+  const parseIntro = x => { const m = String(x || '').split(/\s*[-–]\s*/); if (m.length !== 2) return null; const a = parseT(m[0]), b = parseT(m[1]); return isFinite(a) && isFinite(b) && b > a ? [a, b] : null; };
+  const okIntro = v => Array.isArray(v) && v.length === 2 && isFinite(Number(v[0])) && isFinite(Number(v[1])) && Number(v[1]) > Number(v[0]) ? [Number(v[0]), Number(v[1])] : null;
+  const okFin = v => { v = Number(v); return isFinite(v) && v > 0 ? v : null; };
+  const fmtIntro = v => { v = okIntro(v); return v ? fmtT(v[0]) + '-' + fmtT(v[1]) : ''; };
   const G_SVG ='<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
 
   let toastT;
@@ -495,6 +501,7 @@ import { Cloud } from './auth.js';
     renderBar();
     if (p && opts.track !== false) trackProgress(v, p, opts.ep, opts.next);
     if (opts.goNext) siguienteAuto(v, opts);
+    if (opts.intro) saltarIntro(v, opts);
     if (autoplayNext) { autoplayNext = false; v.play().catch(() => { }); } // llegó aquí por "siguiente episodio" automático
   }
   // Siguiente episodio estilo Netflix: 40 s antes de terminar aparece la cuenta regresiva (miniatura + Reproducir ahora / Cancelar)
@@ -502,7 +509,8 @@ import { Cloud } from './auth.js';
   function siguienteAuto(v, opts) {
     const pl = v.closest('.player');
     if (!pl || !opts.goNext) return;
-    const AV = 40; // segundos antes del final: aparece la caja y empieza la cuenta
+    const AV0 = 40, AVC = 15; // sin marcas: 40 s antes del final. Con "créditos desde": cuenta de 15 s desde que empiezan los créditos
+    let AV = AV0, fin = 0, marcado = false; // AV = duración de la cuenta, fin = segundo en que termina la cuenta
     let box = null, cancelado = false, ido = false;
     const quitar = () => { if (box) { box.remove(); box = null; } };
     const ir = () => { if (ido) return; ido = true; quitar(); autoplayNext = true; opts.goNext(); };
@@ -523,10 +531,16 @@ import { Cloud } from './auth.js';
       if (!document.fullscreenElement) ya.focus({ preventScroll: true });
     };
     const revisar = () => {
-      const d = v.duration, t = v.currentTime, r = d - t;
+      const d = v.duration, t = v.currentTime;
       if (!isFinite(d) || d < 90 || ido) return;
+      // Con marca de créditos (y que quede tiempo): la cuenta empieza ahí y dura AVC s; si no, 40 s antes del final
+      const cr = Number(opts.finalDesde);
+      marcado = isFinite(cr) && cr > 30 && cr < d - 3;
+      if (marcado) { fin = Math.min(d, cr + AVC); AV = fin - cr; } else { fin = d; AV = AV0; }
+      const r = fin - t;
       if (r > AV + 1) { cancelado = false; quitar(); return; } // si vuelve atrás, se rearma
-      if (r <= 0.3 || cancelado) return;
+      if (cancelado) return;
+      if (r <= 0.3) { if (marcado) ir(); return; } // sin marcas, al terminar avanza el evento 'ended'
       if (!box) mostrar();
       const n = Math.max(1, Math.ceil(r)), s = box.querySelector('.pn-s');
       if (s.textContent !== String(n)) s.textContent = n;
@@ -536,6 +550,22 @@ import { Cloud } from './auth.js';
     // refuerzo: en pantalla completa el navegador a veces no avisa/pinta sin mover el mouse; se revisa cada 0,5 s sin depender de eventos
     const tic = setInterval(() => { if (!document.contains(v)) { clearInterval(tic); return; } if (!v.paused) revisar(); }, 500);
     v.addEventListener('ended', () => { if (cancelado) quitar(); else ir(); });
+  }
+  // "Saltar intro": aparece mientras el video está dentro de la franja marcada
+  function saltarIntro(v, opts) {
+    const pl = v.closest('.player');
+    const [a, b] = opts.intro || [];
+    if (!pl || !(b > a)) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pintro';
+    btn.innerHTML = 'Saltar intro <span aria-hidden="true">›</span>';
+    pl.appendChild(btn);
+    btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); v.currentTime = b; v.play().catch(() => { }); btn.classList.remove('on'); });
+    const rev = () => { const t = v.currentTime; btn.classList.toggle('on', t >= a - 0.2 && t < b - 1); };
+    v.addEventListener('timeupdate', rev);
+    v.addEventListener('seeked', rev);
+    v.addEventListener('ended', () => btn.classList.remove('on'));
   }
   const openTrailer = url => { const s = parseSource(url); if (s) openModal(playerHtml(s)); };
 
@@ -1157,6 +1187,11 @@ import { Cloud } from './auth.js';
       const nxTitulo = nx ? (((seasons.find(t => t.n === nx.t) || {}).episodios || []).find(e => e.n === nx.e) || {}).titulo || '' : '';
       const nxThumb = httpsUrl(p.fondo) ? tmdbImg(p.fondo, 300) : tmdbImg(httpsUrl(p.poster), 342);
       const nxOpts = nx ? { goNext: () => { location.hash = epHref(nx); }, nextLabel: `T${nx.t} · E${nx.e}${nxTitulo ? ' — ' + nxTitulo : ''}`, nextThumb: nxThumb } : {};
+      // Intro y créditos: el episodio manda sobre la serie
+      const mkIntro = okIntro(ep && ep.intro) || okIntro(season && season.intro) || okIntro(p.intro);
+      const mkFin = okFin(ep && ep.finalDesde) || okFin(season && season.finalDesde) || okFin(p.finalDesde);
+      if (mkIntro) nxOpts.intro = mkIntro;
+      if (mkFin) nxOpts.finalDesde = mkFin;
       const live = !draft && visible(p); // borradores y programadas se ven como vista previa, sin reacciones ni compartir
       if (live) { recents.push(p); lastWatched = p.id; }
       document.title = `${p.titulo}${serie && ep ? ' ' + epTag : ''} — Pelipe.online`;
@@ -1449,6 +1484,11 @@ import { Cloud } from './auth.js';
         <label>Sinopsis<textarea name="sinopsis" rows="4" maxlength="1500">${esc(curSerie?.sinopsis ?? '')}</textarea></label>
         <input type="hidden" name="epsin" value="${esc(curSerie ? sinMap(curSerie) : '{}')}">
         <label>Episodios * <small class="muted">una línea por servidor: <b>TEMPORADAxEPISODIO | Título | idioma | enlace</b>. Idioma: <b>lat</b> (Latino), <b>es</b> (Castellano), <b>ensub</b> (English sub. español), <b>fr</b> (Francés), <b>it</b> (Italiano), <b>de</b> (Alemán), <b>pl</b> (Polaco), <b>pt</b> (Portugués), <b>ja</b> (Japonés), <b>zh</b> (Chino) o vacío. Para ofrecer varios idiomas del mismo episodio, repite la línea con otro idioma. Opcional: un 5.º campo con el nombre del servidor.</small><textarea name="episodios" rows="10" required spellcheck="false" placeholder="1x01 | Piloto | lat | https://…/ep1-latino.mp4&#10;1x01 | Pilot | en | https://…/ep1-en.mp4&#10;1x02 | Segundo episodio | lat | https://…/ep2.mp4">${esc(curSerie ? serieText(curSerie) : '')}</textarea></label>
+        <div class="three">
+          <label>Intro <small class="muted">inicio-fin, p. ej. 0:35-1:30 (opcional): muestra «Saltar intro»</small><input name="intro" maxlength="20" placeholder="0:35-1:30" value="${esc(fmtIntro(curSerie?.intro))}"></label>
+          <label>Créditos desde <small class="muted">p. ej. 41:20 (opcional): ahí sale el siguiente episodio</small><input name="finaldesde" maxlength="10" placeholder="41:20" value="${esc(okFin(curSerie?.finalDesde) ? fmtT(okFin(curSerie.finalDesde)) : '')}"></label>
+        </div>
+        <label>Tiempos distintos en episodios sueltos <small class="muted">opcional, una línea por episodio: <b>TEMPORADAxEPISODIO | intro | créditos</b>, p. ej. <b>1x05 | 0:20-1:10 | 40:00</b> (deja vacío el que no cambie)</small><textarea name="marcas" rows="3" spellcheck="false" placeholder="1x05 | 0:20-1:10 | 40:00">${esc(curSerie ? epsOf(curSerie).flatMap(t => t.episodios.filter(e => okIntro(e.intro) || okFin(e.finalDesde)).map(e => `${t.n}x${String(e.n).padStart(2, '0')} | ${fmtIntro(e.intro)} | ${okFin(e.finalDesde) ? fmtT(okFin(e.finalDesde)) : ''}`)).join('\n') : '')}</textarea></label>
         <label>Póster (enlace https a una imagen vertical) <small class="muted">si lo dejas vacío, se busca por título en TMDB</small><input name="poster" type="url" value="${esc(curSerie?.poster ?? '')}"></label>
         <label>Imagen de fondo para la portada <small class="muted">opcional, horizontal</small><input name="fondo" type="url" value="${esc(curSerie?.fondo ?? '')}"></label>
         <label>Licencia *<select name="licencia" required><option value="">Elige…</option>${Object.entries(LICENCIAS).map(([k, t]) => `<option value="${k}" ${curSerie?.licencia === k ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
@@ -1581,12 +1621,26 @@ import { Cloud } from './auth.js';
           let sin = {}; try { sin = JSON.parse(sf.elements.epsin.value || '{}') || {}; } catch { }
           temporadas.forEach(t => t.episodios.forEach(e => { const x = String(sin[t.n + 'x' + e.n] || '').trim(); if (x) e.sinopsis = x.slice(0, 400); }));
           if (!temporadas.length) return toast('Agrega al menos un episodio.');
+          const intro = g('intro') ? parseIntro(g('intro')) : null;
+          if (g('intro') && !intro) return toast('El intro va como inicio-fin, p. ej. 0:35-1:30.');
+          const finD = g('finaldesde') ? parseT(g('finaldesde')) : NaN;
+          if (g('finaldesde') && !(finD > 0)) return toast('«Créditos desde» va como minutos:segundos, p. ej. 41:20.');
+          for (const [i, line] of g('marcas').split('\n').map(l => l.trim()).filter(Boolean).entries()) {
+            const c = line.split('|').map(x => x.trim());
+            const m = (c[0] || '').match(/^(?:s|t)?\s*(\d{1,2})\s*[xe]\s*(\d{1,3})$/i);
+            const epx = m && (temporadas.find(t => t.n === Number(m[1])) || { episodios: [] }).episodios.find(e => e.n === Number(m[2]));
+            if (!epx) return toast(`Tiempos sueltos, línea ${i + 1}: usa “1x05 | 0:20-1:10 | 40:00” con un episodio que exista.`);
+            const ii = c[1] ? parseIntro(c[1]) : null, ff = c[2] ? parseT(c[2]) : NaN;
+            if ((c[1] && !ii) || (c[2] && !(ff > 0))) return toast(`Tiempos sueltos, línea ${i + 1}: revisa los tiempos (0:35-1:30 y 41:20).`);
+            if (ii) epx.intro = ii;
+            if (ff > 0) epx.finalDesde = ff;
+          }
           if (!g('poster') && !g('fondo') && hasTmdb()) {
             const t = await tmdbArt(g('titulo'), g('anio'), true);
             if (t) { sf.elements.poster.value = t.poster || ''; sf.elements.fondo.value = t.fondo || ''; toast(`Portada oficial tomada de TMDB: “${t.nombre}”. Si no es la serie correcta, cámbiala editando.`); }
           }
           const id = curSerie ? curSerie.id : 's' + Date.now().toString(36);
-          const d = { tipo: 'serie', titulo: g('titulo'), anio: g('anio'), calificacion: cal ? Number(Number(cal).toFixed(1)) : '', generos: g('generos'), sinopsis: g('sinopsis'), poster: g('poster'), fondo: g('fondo'), licencia: g('licencia'), creditos: g('creditos'), temporadas, calidad: 'HD', calidades: ['HD'], url: temporadas[0].episodios[0].servidores[0].u, creado: curSerie ? (curSerie.creado || Date.now()) : Date.now(), publicarEn: 0, actualizado: Date.now(), por: curSerie?.por || user.email };
+          const d = { tipo: 'serie', titulo: g('titulo'), anio: g('anio'), calificacion: cal ? Number(Number(cal).toFixed(1)) : '', generos: g('generos'), sinopsis: g('sinopsis'), poster: g('poster'), fondo: g('fondo'), licencia: g('licencia'), creditos: g('creditos'), ...(intro ? { intro } : {}), ...(finD > 0 ? { finalDesde: finD } : {}), temporadas, calidad: 'HD', calidades: ['HD'], url: temporadas[0].episodios[0].servidores[0].u, creado: curSerie ? (curSerie.creado || Date.now()) : Date.now(), publicarEn: 0, actualizado: Date.now(), por: curSerie?.por || user.email };
           await Cloud.savePelicula(id, d);
           bust(); editing = null; toast(curSerie ? 'Serie actualizada.' : 'Serie publicada.'); adminPage();
         } catch (err) { toast('No se pudo guardar: ' + (err.code || err.message)); }
@@ -1615,7 +1669,7 @@ import { Cloud } from './auth.js';
     }));
 
     // Copia de seguridad (descargar) y restauración (solo administrador)
-    const BK = ['titulo', 'anio', 'duracion', 'calificacion', 'generos', 'calidad', 'calidades', 'servidores', 'sinopsis', 'poster', 'fondo', 'trailer', 'url', 'licencia', 'creditos', 'creado', 'actualizado', 'por', 'subtitulos', 'versiones', 'audioNombre', 'publicarEn', 'tipo', 'temporadas'];
+    const BK = ['titulo', 'anio', 'duracion', 'calificacion', 'generos', 'calidad', 'calidades', 'servidores', 'sinopsis', 'poster', 'fondo', 'trailer', 'url', 'licencia', 'creditos', 'creado', 'actualizado', 'por', 'subtitulos', 'versiones', 'audioNombre', 'publicarEn', 'tipo', 'temporadas', 'intro', 'finalDesde'];
     const pick = x => { const o = {}; for (const k of BK) if (x[k] !== undefined) o[k] = x[k]; return o; };
     const bkLast = () => { const t = Number(lsGet(LS_BK)); document.getElementById('bklast').textContent = t ? `Última copia: hace ${Math.max(0, Math.floor((Date.now() - t) / 864e5))} día(s).` : 'Aún no has descargado ninguna copia.'; };
     bkLast();
