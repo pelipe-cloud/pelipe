@@ -516,7 +516,7 @@ footer a{display:inline-block;padding:5px 0}
 /* Pantalla completa del reproductor (con la "P" de marca de agua) */
 .pfs{position:absolute;right:33px;bottom:31px;z-index:3;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:none;border:0;color:#fff;opacity:0;transition:opacity .15s,background .15s}
 .pfs svg{width:18px;height:18px}
-.player:hover .pfs,.pfs:focus-visible{opacity:.9}
+.player.act .pfs,.pfs:focus-visible{opacity:.9}
 .pfs:hover,.pfs:focus-visible{opacity:1;background:rgba(255,255,255,.18);outline:0}
 @media(hover:none){.pfs{opacity:.9}}
 /* Adelantar / atrasar 10 s */
@@ -524,7 +524,7 @@ footer a{display:inline-block;padding:5px 0}
 .pskip svg{grid-area:1/1;width:30px;height:30px}
 .pskip span{grid-area:1/1;font-size:.62rem;font-weight:800;line-height:1;margin-top:1px}
 .pback{left:9%}.pfwd{right:9%}
-.player:hover .pskip,.pskip:focus-visible{opacity:.9}
+.player.act .pskip,.pskip:focus-visible{opacity:.9}
 .pskip:hover,.pskip:focus-visible{opacity:1;background:rgba(11,11,16,.75);outline:0}
 /* En celular y pantallas táctiles no se muestran los botones ni el aviso de 10 s */
 @media(hover:none),(pointer:coarse),(max-width:720px){.pskip,.phint{display:none!important}}

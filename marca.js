@@ -37,6 +37,12 @@
     h.className = 'phint';
     h.setAttribute('aria-hidden', 'true');
     p.appendChild(h);
+    // Los botones aparecen al mover el mouse y se ocultan solos a los 3 s sin moverlo (también en pantalla completa)
+    let idle;
+    const act = () => { p.classList.add('act'); clearTimeout(idle); idle = setTimeout(() => p.classList.remove('act'), 3000); };
+    p.addEventListener('mousemove', act);
+    p.addEventListener('pointerdown', act);
+    p.addEventListener('mouseleave', () => { clearTimeout(idle); p.classList.remove('act'); });
     // Doble toque en el celular: tercio izquierdo atrasa, tercio derecho adelanta
     let lastTap = 0, lastX = 0;
     p.addEventListener('pointerup', e => {
