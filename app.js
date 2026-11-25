@@ -517,6 +517,8 @@ import { Cloud } from './auth.js';
       // En pantalla completa algunos navegadores no repintan lo nuevo hasta que hay actividad del mouse: la simulamos (igual que mover el mouse, los botones aparecen 3 s)
       pl.classList.add('act');
       try { pl.dispatchEvent(new MouseEvent('mousemove', { bubbles: true })); } catch { }
+      // Opera/Chromium con aceleración por hardware: un cambio mínimo en el video obliga a repintar la pantalla completa
+      v.style.opacity = '0.999'; requestAnimationFrame(() => requestAnimationFrame(() => { v.style.opacity = ''; }));
       box.addEventListener('click', e => {
         const b = e.target.closest('[data-a]');
         if (!b) return;
