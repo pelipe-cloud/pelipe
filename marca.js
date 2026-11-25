@@ -20,6 +20,19 @@
     b.title = 'Pantalla completa';
     b.innerHTML = ICON;
     p.appendChild(b);
+    // Botón grande de play en el centro (estilo Netflix): aparece con el video en pausa y se oculta al reproducir
+    const pp = document.createElement('button');
+    pp.type = 'button';
+    pp.className = 'pplay';
+    pp.setAttribute('aria-label', 'Reproducir');
+    pp.title = 'Reproducir';
+    pp.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 4.5v15a1 1 0 0 0 1.5.86l12.4-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>';
+    p.appendChild(pp);
+    let tp;
+    const sync = () => { clearTimeout(tp); tp = setTimeout(() => p.classList.toggle('paused', v.paused || v.ended), v.paused ? 180 : 0); };
+    ['play', 'playing', 'pause', 'ended', 'loadedmetadata'].forEach(ev => v.addEventListener(ev, sync));
+    p.classList.toggle('paused', v.paused);
+    pp.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); if (v.ended) v.currentTime = 0; v.play().catch(() => { }); });
     // Adelantar / atrasar 10 s (botones laterales, aviso en pantalla, teclado y doble toque)
     const mk = (cls, label, back) => {
       const k = document.createElement('button');

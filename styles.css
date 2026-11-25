@@ -650,3 +650,19 @@ footer>.apkbtn{margin-left:auto;align-self:center}
 
 /* Pantalla completa: capa casi invisible sobre el video para que el navegador no lo dibuje "por encima" de la P y del aviso (pasa con algunos videos 4:3) */
 .player:fullscreen::after,.player:-webkit-full-screen::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.012);pointer-events:none;z-index:1}
+
+/* Botón de pantalla completa más grande y un poco más arriba (el centro horizontal se mantiene) */
+.pfs{width:46px;height:46px;right:27px;bottom:44px}
+.pfs svg{width:25px;height:25px}
+.player:fullscreen .pfs,.player:-webkit-full-screen .pfs{right:46px;bottom:88px;width:54px;height:54px}
+.player:fullscreen .pfs svg{width:28px;height:28px}
+
+/* Play grande en el centro (estilo Netflix); se quita el play pequeño de abajo */
+.player video::-webkit-media-controls-play-button,.player video::-webkit-media-controls-overlay-play-button{display:none!important}
+.pplay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3;width:84px;height:84px;border-radius:50%;display:grid;place-items:center;padding:0;background:rgba(11,11,16,.55);border:2px solid rgba(255,255,255,.85);color:#fff;cursor:pointer;opacity:0;pointer-events:none;backdrop-filter:blur(4px);transition:opacity .2s,transform .2s,background .2s,border-color .2s}
+.pplay svg{width:40px;height:40px;margin-left:5px}
+.player.paused .pplay{opacity:1;pointer-events:auto}
+.pplay:hover,.pplay:focus-visible{background:var(--acc);border-color:var(--acc);transform:translate(-50%,-50%) scale(1.08);outline:0}
+.player:fullscreen .pplay{width:110px;height:110px}
+.player:fullscreen .pplay svg{width:52px;height:52px}
+@media(max-width:720px){.pplay{width:64px;height:64px}.pplay svg{width:30px;height:30px}}
