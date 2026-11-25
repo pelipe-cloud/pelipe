@@ -527,7 +527,7 @@ footer a{display:inline-block;padding:5px 0}
 .player.act .pskip,.pskip:focus-visible{opacity:.9}
 .pskip:hover,.pskip:focus-visible{opacity:1;background:rgba(11,11,16,.75);outline:0}
 /* En celular y pantallas táctiles no se muestran los botones ni el aviso de 10 s */
-@media(hover:none),(pointer:coarse),(max-width:720px){.pskip,.phint{display:none!important}}
+@media(hover:none),(pointer:coarse),(max-width:720px){.phint{display:none!important}}
 .phint{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);z-index:4;padding:10px 18px;border-radius:999px;background:rgba(11,11,16,.7);color:#fff;font-weight:800;font-size:1.05rem;pointer-events:none;opacity:0;white-space:nowrap}
 .phint.on{animation:phint .8s ease-out}
 @keyframes phint{0%{opacity:0;transform:translate(-50%,-50%) scale(.9)}15%{opacity:1;transform:translate(-50%,-50%) scale(1)}70%{opacity:1}100%{opacity:0}}
@@ -680,3 +680,11 @@ footer>.apkbtn{margin-left:auto;align-self:center}
 .pskip{background:var(--acc);border:0;box-shadow:0 4px 18px rgba(0,0,0,.35)}
 .player.act .pskip,.pskip:focus-visible{opacity:1}
 .pskip:hover,.pskip:focus-visible{background:var(--acc);filter:brightness(1.12);transform:translateY(-50%) scale(1.08);outline:0}
+
+/* Celular: las flechas de 10 s naranjas también salen (al tocar el video o con el video en pausa) */
+@media(hover:none),(pointer:coarse),(max-width:720px){
+  .pskip{width:46px;height:46px}
+  .pskip svg{width:27px;height:27px}
+  .pback{left:7%}.pfwd{right:7%}
+  .player.paused .pskip{opacity:1}
+}
