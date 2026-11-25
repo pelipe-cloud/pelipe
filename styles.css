@@ -575,18 +575,21 @@ footer a{display:inline-block;padding:5px 0}
 @media(min-width:1501px){#acct{min-width:231px}}
 
 /* Botón de la app en el pie */
-.apkbtn{display:inline-flex;align-items:center;gap:12px;margin:0;justify-self:center;padding:10px 18px 10px 14px;border-radius:14px;text-decoration:none;color:var(--tx);background:linear-gradient(var(--bg2),var(--bg2)) padding-box,linear-gradient(120deg,var(--acc),var(--acc2)) border-box;border:1.5px solid transparent;box-shadow:0 6px 22px rgba(255,90,54,.18);transition:transform .2s,box-shadow .2s;text-align:left}
+.apkbtn{display:inline-flex;align-items:center;gap:12px;margin:0;padding:10px 18px 10px 14px;border-radius:14px;text-decoration:none;color:var(--tx);background:linear-gradient(var(--bg2),var(--bg2)) padding-box,linear-gradient(120deg,var(--acc),var(--acc2)) border-box;border:1.5px solid transparent;box-shadow:0 6px 22px rgba(255,90,54,.18);transition:transform .2s,box-shadow .2s;text-align:left}
 .apkbtn:hover,.apkbtn:focus-visible{transform:translateY(-2px);box-shadow:0 10px 28px rgba(255,90,54,.32);outline:0}
 .apkbtn svg{width:34px;height:34px;flex:none;color:var(--acc2)}
 .apkbtn b{display:block;font-size:.95rem;line-height:1.15;letter-spacing:.01em}
 .apkbtn small{display:block;margin-top:2px;font-size:.74rem;color:var(--mute);letter-spacing:.03em}
 .apkbtn .go{font-size:1.1rem;color:var(--acc);margin-left:2px}
-footer{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px 28px}
-.foot-l{max-width:none}
-@media (max-width:900px){footer{grid-template-columns:1fr;text-align:center}.apkbtn{justify-self:center}.foot-l{max-width:none}.foot-r{margin:0;width:auto;text-align:center}.stats{justify-content:center}}
+
+/* "Ya somos APP" junto a "Solicita tu película" (debajo del banner) */
+.pedir .apkbtn{border-radius:999px;padding:11px 20px 11px 14px;backdrop-filter:blur(10px)}
+.pedir .apkbtn svg{width:26px;height:26px}
+/* En las páginas estáticas de cada título el botón sigue en el pie */
+footer>.apkbtn{margin-left:auto;align-self:center}
 
 /* Solicita tu película */
-.pedir{position:relative;z-index:15;padding:0 max(16px,4vw);margin:16px 0 26px;display:flex}
+.pedir{position:relative;z-index:15;padding:0 max(16px,4vw);margin:16px 0 26px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 .pedir-btn{display:inline-flex;align-items:center;gap:12px;padding:11px 20px 11px 14px;border-radius:999px;cursor:pointer;font:inherit;color:var(--tx);text-align:left;
   background:linear-gradient(rgba(20,20,28,.92),rgba(20,20,28,.92)) padding-box,linear-gradient(120deg,var(--acc),var(--acc2)) border-box;border:1.5px solid transparent;
   backdrop-filter:blur(10px);box-shadow:0 8px 26px rgba(0,0,0,.45),0 0 22px rgba(255,90,54,.16);transition:transform .2s,box-shadow .2s}
@@ -629,26 +632,18 @@ footer{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20
 .pedir-ok h3{margin-bottom:6px}
 .pedir-ok p{color:var(--mute);font-size:.9rem}
 .pedir-ok .btn{margin-top:14px}
-.psug li img{width:40px;height:60px;border-radius:6px;object-fit:cover;flex:none;background:var(--bg3)}
-.psug li.ya{cursor:default;opacity:.9}
-.psug li.vacio{cursor:default;color:var(--mute);font-size:.9rem}
-.psug a.pya{text-decoration:none}
-.pedir-ok .btn{border:0;cursor:pointer;font:inherit}
-@media(prefers-reduced-motion:reduce){.pedir-box{animation:none}}
 
-/* Siguiente episodio (cuenta regresiva 20 s antes del final) */
-.pnext{position:absolute;right:clamp(10px,3%,28px);bottom:clamp(60px,16%,110px);z-index:6;width:min(380px,90%);padding:12px;border-radius:14px;background:rgba(11,11,16,.93);border:1px solid rgba(255,255,255,.16);box-shadow:0 14px 40px rgba(0,0,0,.6);animation:pnin .25s ease-out;color:#fff}
+/* Siguiente episodio (cuenta atrás tipo Netflix) */
+.player{position:relative}
+.pnext{position:absolute;right:16px;bottom:64px;z-index:30;width:min(380px,90%);padding:12px;border-radius:14px;background:rgba(14,14,20,.94);border:1px solid rgba(255,255,255,.14);box-shadow:0 16px 44px rgba(0,0,0,.6);backdrop-filter:blur(10px);animation:pedirIn .25s ease-out}
 .pnext-r{display:flex;gap:12px;align-items:center}
-.pnext-r img{width:112px;height:63px;object-fit:cover;border-radius:8px;flex:none;background:var(--bg3)}
+.pnext-r img{width:112px;height:63px;object-fit:cover;border-radius:8px;flex:none;background:#222}
 .pnext-t{min-width:0}
-.pnext small{display:block;color:var(--mute);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em}
-.pnext b{display:block;margin:2px 0 3px;font-size:.95rem;line-height:1.25}
-.pnext p{font-size:.82rem;color:var(--mute)}
-.pnext .pn-s{color:var(--acc2);font-weight:800}
-.pnext-bar{height:4px;border-radius:4px;background:rgba(255,255,255,.15);overflow:hidden;margin:10px 0 12px}
+.pnext-t small{display:block;font-size:.72rem;color:var(--mute);letter-spacing:.04em;text-transform:uppercase}
+.pnext-t b{display:block;font-size:.95rem;line-height:1.2;margin:2px 0;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.pnext-t p{font-size:.8rem;color:var(--mute);margin:0}
+.pnext-t .pn-s{color:var(--acc2);font-weight:800}
+.pnext-bar{height:4px;border-radius:4px;background:rgba(255,255,255,.14);margin:10px 0;overflow:hidden}
 .pnext-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .3s linear}
-.pnext-b{display:flex;gap:8px;flex-wrap:wrap}
-.pnext-b .btn{border:0;cursor:pointer;font:inherit;font-weight:600;white-space:nowrap;padding:8px 14px}
-.pnext-b .btn.ghost{border:1px solid var(--line)}
-@keyframes pnin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@media(prefers-reduced-motion:reduce){.pnext{animation:none}.pnext-bar i{transition:none}}
+.pnext-b{display:flex;gap:8px}
+.pnext-b .btn{flex:1;justify-content:center}

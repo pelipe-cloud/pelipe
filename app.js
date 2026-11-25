@@ -497,12 +497,12 @@ import { Cloud } from './auth.js';
     if (opts.goNext) siguienteAuto(v, opts);
     if (autoplayNext) { autoplayNext = false; v.play().catch(() => { }); } // llegó aquí por "siguiente episodio" automático
   }
-  // Siguiente episodio estilo Netflix: 20 s antes de terminar aparece la cuenta regresiva (miniatura + Reproducir ahora / Cancelar)
+  // Siguiente episodio estilo Netflix: 40 s antes de terminar aparece la cuenta regresiva (miniatura + Reproducir ahora / Cancelar)
   let autoplayNext = false;
   function siguienteAuto(v, opts) {
     const pl = v.closest('.player');
     if (!pl || !opts.goNext) return;
-    const AV = 20; // segundos antes del final
+    const AV = 40; // segundos antes del final: aparece la caja y empieza la cuenta
     let box = null, cancelado = false, ido = false;
     const quitar = () => { if (box) { box.remove(); box = null; } };
     const ir = () => { if (ido) return; ido = true; quitar(); autoplayNext = true; opts.goNext(); };
@@ -567,6 +567,10 @@ import { Cloud } from './auth.js';
         <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="9" width="30" height="24" rx="3"/><path d="M5 15h30M12 9v6M20 9v6M28 9v6"/><circle cx="36" cy="34" r="9" fill="#14141c"/><path d="M36 29.5v9M31.5 34h9"/></svg>
         <span><b>¿No encuentras tu película?</b><small>Solicítala y la buscamos</small></span>
       </button>
+      <a class="apkbtn" href="/app/" aria-label="Descargar la app de Pelipe para TV, Chromecast y celulares">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="30" height="20" rx="3"/><path d="M13 34h10M18 28v6"/><rect x="33" y="17" width="12" height="23" rx="3" fill="#14141c"/><path d="M37.5 36.5h3"/><path d="M14 14.5l8 3.5-8 3.5z" fill="currentColor" stroke="none"/></svg>
+        <span><b>¡Ya somos APP!</b><small>Para TV · Chromecast · Celulares</small></span><span class="go">›</span>
+      </a>
       <div class="pedir-box" id="pd-caja" hidden role="dialog" aria-label="Solicita tu película">
         <div id="pd-v1">
           <div class="pedir-top"><h3>Solicita tu película</h3><button type="button" class="pedir-x" id="pd-x" aria-label="Cerrar">✕</button></div>
