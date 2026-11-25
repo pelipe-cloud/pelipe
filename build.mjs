@@ -129,7 +129,7 @@ ${p.creditos ? `<p class="lic">${esc(p.creditos)}</p>` : ''}
 </div>
 </article>
 </main>
-<footer><div class="foot-l"><p>Pelipe.online es un proyecto personal sin fines de lucro. Todas las películas y series publicadas son obras propias, de dominio público o con licencia libre.</p></div><a class="apkbtn" href="/app/" aria-label="Descargar la app de Pelipe para Android TV, Chromecast y Celular Android"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="30" height="20" rx="3"/><path d="M13 34h10M18 28v6"/><rect x="33" y="17" width="12" height="23" rx="3" fill="#14141c"/><path d="M37.5 36.5h3"/><path d="M14 14.5l8 3.5-8 3.5z" fill="currentColor" stroke="none"/></svg><span><b>¡Ya somos APP!</b><small>Para AndroidTV · Chromecast · Celular Android</small></span><span class="go">›</span>
+<footer><div class="foot-l"><p>Pelipe.online es un proyecto personal sin fines de lucro. Todas las películas y series publicadas son obras propias, de dominio público o con licencia libre.</p></div><a class="apkbtn" href="/app/" aria-label="Descargar la app de Pelipe para TV, Chromecast y celulares"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="30" height="20" rx="3"/><path d="M13 34h10M18 28v6"/><rect x="33" y="17" width="12" height="23" rx="3" fill="#14141c"/><path d="M37.5 36.5h3"/><path d="M14 14.5l8 3.5-8 3.5z" fill="currentColor" stroke="none"/></svg><span><b>¡Ya somos APP!</b><small>Para TV · Chromecast · Celulares</small></span><span class="go">›</span>
     </a></footer>
 </body>
 </html>
@@ -220,7 +220,7 @@ if (SITE) {
 
 // index.html: bloque de cabecera + og:image
 let html = rd('index.html');
-const first = pub.find(p => !isSerie(p)); // la portada del inicio es siempre una película
+const first = [...pub].sort((a, b) => (b.creado || 0) - (a.creado || 0))[0]; // la portada del inicio es lo último publicado (película o serie), igual que el carrusel de app.js
 const hero = first && (https(first.fondo) || https(first.poster));
 const block = [
   SITE ? `<link rel="canonical" href="${SITE}/">\n  <meta property="og:url" content="${SITE}/">` : '',
@@ -229,7 +229,7 @@ const block = [
   hero ? (/image\.tmdb\.org\/t\/p\/w\d+\//.test(hero)
     ? `<link rel="preload" href="${esc(hero.replace(/\/t\/p\/w\d+\//, '/t/p/w780/'))}" as="image" fetchpriority="high" media="(max-width: 900px)">\n  <link rel="preload" href="${esc(hero.replace(/\/t\/p\/w\d+\//, '/t/p/w1280/'))}" as="image" fetchpriority="high" media="(min-width: 901px)">`
     : `<link rel="preload" href="${esc(hero)}" as="image" fetchpriority="high">`) : '',
-  SITE ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': [{ '@type': 'WebSite', '@id': SITE + '/#sitio', name: 'Pelipe', alternateName: ['Pelipe.online'], url: SITE + '/', inLanguage: 'es', description: 'Pelipe: películas y series libres en español, para ver en la web, en Android TV, Chromecast y Celular Android.', publisher: { '@id': SITE + '/#org' } }, { '@type': 'Organization', '@id': SITE + '/#org', name: 'Pelipe', alternateName: ['Pelipe.online'], url: SITE + '/', logo: { '@type': 'ImageObject', url: SITE + '/icon-512.png', width: 512, height: 512 } }] }).replace(/</g, '\\u003c')}</script>` : ''
+  SITE ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Pelipe.online', url: SITE + '/', inLanguage: 'es' })}</script>` : ''
 ].filter(Boolean).join('\n  ');
 html = html.replace(/<!--build:head-->[\s\S]*?<!--\/build:head-->/, `<!--build:head-->\n  ${block}\n  <!--/build:head-->`);
 // Primer banner del inicio ya escrito en el HTML: la imagen y el texto se pintan sin esperar al JavaScript (mejora el LCP).
@@ -244,7 +244,7 @@ if (first) {
   const style = bg ? (isT
     ? `<style>#pre-slider .hero-bg{background-image:url('${w(780)}')}@media(min-width:901px){#pre-slider .hero-bg{background-image:url('${w(1280)}')}}</style>`
     : `<style>#pre-slider .hero-bg{background-image:url('${esc(bg)}')}</style>`) : '';
-  pre = `${style}<section class="hero slider" id="pre-slider" data-pre data-nosnippet aria-label="Películas recientes"><article class="slide on">${bg ? `<div class="hero-bg ${https(first.fondo) ? '' : 'blur'}"></div>` : ''}<div class="hero-in"><span class="tag">Lo más nuevo</span><h1>${esc(first.titulo)}</h1><div class="meta-line"><span>${esc(first.anio || '')}</span>${first.duracion ? `<span>${esc(fmtDur(first.duracion))}</span>` : ''}<span class="chip q">HD</span>${g0 ? `<span class="chip">${esc(g0.charAt(0).toUpperCase() + g0.slice(1))}</span>` : ''}</div><p>${esc(first.sinopsis || '')}</p><div class="actions"><a class="btn" href="#/ver/${encodeURIComponent(first.id)}">▶ Ver película</a></div></div></article></section>`;
+  pre = `${style}<section class="hero slider" id="pre-slider" data-pre data-nosnippet aria-label="Películas y series recientes"><article class="slide on">${bg ? `<div class="hero-bg ${https(first.fondo) ? '' : 'blur'}"></div>` : ''}<div class="hero-in"><span class="tag">Lo más nuevo</span><h1>${esc(first.titulo)}</h1><div class="meta-line"><span>${esc(first.anio || '')}</span>${first.duracion ? `<span>${esc(fmtDur(first.duracion))}</span>` : ''}${isSerie(first) ? `<span>${(first.temporadas || []).length} temporada${(first.temporadas || []).length === 1 ? '' : 's'}</span>` : ''}<span class="chip q">HD</span>${g0 ? `<span class="chip">${esc(g0.charAt(0).toUpperCase() + g0.slice(1))}</span>` : ''}</div><p>${esc(first.sinopsis || '')}</p><div class="actions"><a class="btn" href="#/ver/${encodeURIComponent(first.id)}">▶ Ver ${isSerie(first) ? 'serie' : 'película'}</a></div></div></article></section>`;
 }
 if (/<!--build:hero-->/.test(html)) html = html.replace(/<!--build:hero-->[\s\S]*?<!--\/build:hero-->/, `<!--build:hero-->${pre}<!--/build:hero-->`);
 else console.warn('Aviso: index.html no tiene <!--build:hero--> dentro de <main>; no se escribe el banner del inicio.');

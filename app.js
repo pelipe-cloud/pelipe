@@ -494,6 +494,44 @@ import { Cloud } from './auth.js';
     }
     renderBar();
     if (p && opts.track !== false) trackProgress(v, p, opts.ep, opts.next);
+    if (opts.goNext) siguienteAuto(v, opts);
+    if (autoplayNext) { autoplayNext = false; v.play().catch(() => { }); } // llegó aquí por "siguiente episodio" automático
+  }
+  // Siguiente episodio estilo Netflix: al terminar, cuenta regresiva de 10 s (Reproducir ahora / Cancelar)
+  let autoplayNext = false;
+  function siguienteAuto(v, opts) {
+    const pl = v.closest('.player');
+    if (!pl || !opts.goNext) return;
+    let box = null, tick = 0;
+    const quitar = () => { clearInterval(tick); tick = 0; if (box) { box.remove(); box = null; } };
+    v.addEventListener('ended', () => {
+      if (box) return;
+      let n = 10;
+      box = document.createElement('div');
+      box.className = 'pnext';
+      box.setAttribute('role', 'dialog');
+      box.setAttribute('aria-label', 'Siguiente episodio');
+      box.innerHTML = `<small>Siguiente episodio</small><b>${esc(opts.nextLabel || '')}</b><p>Empieza en <span class="pn-s">${n}</span> s</p><div class="pnext-bar"><i></i></div><div class="pnext-b"><button type="button" class="btn sm" data-a="ya">▶ Reproducir ahora</button><button type="button" class="btn ghost sm" data-a="no">Cancelar</button></div>`;
+      pl.appendChild(box);
+      box.querySelector('.pnext-bar i').style.animation = 'pnbar 10s linear forwards';
+      box.querySelector('[data-a="ya"]').focus({ preventScroll: true });
+      box.addEventListener('click', e => {
+        const b = e.target.closest('[data-a]');
+        if (!b) return;
+        const ya = b.dataset.a === 'ya';
+        quitar();
+        if (ya) { autoplayNext = true; opts.goNext(); }
+      });
+      tick = setInterval(() => {
+        if (!document.body.contains(v)) { quitar(); return; } // ya cambió de página o de servidor
+        n--;
+        const s = box && box.querySelector('.pn-s');
+        if (s) s.textContent = n;
+        if (n <= 0) { quitar(); autoplayNext = true; opts.goNext(); }
+      }, 1000);
+    });
+    v.addEventListener('play', quitar);
+    v.addEventListener('seeking', quitar);
   }
   const openTrailer = url => { const s = parseSource(url); if (s) openModal(playerHtml(s)); };
 
@@ -537,7 +575,7 @@ import { Cloud } from './auth.js';
           <ul class="psug" id="pd-sug"></ul>
           <div class="pedir-mail"><label for="pd-mail">Tu correo (opcional, para avisarte cuando esté)</label><input id="pd-mail" type="email" placeholder="tucorreo@ejemplo.com" autocomplete="email" maxlength="120"></div>
           <input type="text" id="pd-honey" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
-          <div class="pedir-send"><small>Máximo 3 solicitudes por día. Revisamos todas.</small><button type="button" class="pedir-go" id="pd-go" disabled>Enviar solicitud</button></div>
+          <div class="pedir-send"><small>Máximo 5 solicitudes por día. Revisamos todas.</small><button type="button" class="pedir-go" id="pd-go" disabled>Enviar solicitud</button></div>
         </div>
         <div id="pd-v2" class="pedir-ok" hidden>
           <div class="chk">✓</div><h3>¡Solicitud enviada!</h3><p id="pd-okt"></p><button type="button" class="btn" id="pd-otra">Pedir otra</button>
@@ -607,7 +645,7 @@ import { Cloud } from './auth.js';
     go.addEventListener('click', async () => {
       if (!sel || $('pd-honey').value) return;
       const u = usados();
-      if (u.n >= 3) { toast('Ya enviaste 3 solicitudes hoy. Vuelve mañana 🙂'); return; }
+      if (u.n >= 5) { toast('Ya enviaste 5 solicitudes hoy. Vuelve mañana 🙂'); return; }
       const nombre = sel.libre ? sel.title : (sel.title || sel.name || ''), anio = sel.libre ? '' : (sel.release_date || sel.first_air_date || '').slice(0, 4);
       const clave = norm(nombre) + anio;
       if (u.t.includes(clave)) { toast('Ya pediste esta película hoy. ¡La revisaremos pronto!'); return; }
@@ -649,10 +687,10 @@ import { Cloud } from './auth.js';
       app.innerHTML = `<div class="notice"><h2>Todavía no hay películas</h2><p>Cuando se publique la primera, aparecerá aquí lista para reproducir.</p>${canPublish() ? '<p style="margin-top:12px"><a class="btn" href="#/admin">Publicar la primera</a></p>' : ''}</div>`;
       return;
     }
-    const slides = list.slice(0, 10); // las 10 publicadas más recientemente
+    let serAll = []; try { serAll = await seriesCat(); } catch { }
+    const slides = [...list, ...serAll].sort((a, b) => (b.creado || 0) - (a.creado || 0)).slice(0, 10); // las 10 publicadas más recientemente (películas y series)
     const byId = id => list.find(p => same(p.id, id));
     // Continuar viendo: solo aparece si la persona dejó algo a medias (videos propios, donde se puede medir)
-    let serAll = []; try { serAll = await seriesCat(); } catch { }
     const recientes = [...list, ...serAll].sort((a, b) => (b.creado || 0) - (a.creado || 0)).slice(0, 12); // películas y series mezcladas, lo último subido primero
     const cont = data.progreso.map(m => {
       const s = m.ep ? serAll.find(y => same(y.id, m.id)) : null, x = s || byId(m.id);
@@ -661,16 +699,16 @@ import { Cloud } from './auth.js';
     }).filter(Boolean);
     const shuffle = a => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
     app.innerHTML = `
-      <section data-nosnippet class="hero slider" id="slider" aria-roledescription="carrusel" aria-label="Películas recientes">
+      <section data-nosnippet class="hero slider" id="slider" aria-roledescription="carrusel" aria-label="Películas y series recientes">
         ${slides.map((f, i) => { const bg = httpsUrl(f.fondo) ? tmdbImg(f.fondo, SMALL ? 780 : 1280) : httpsUrl(f.poster); return `<article class="slide ${i === 0 ? 'on' : ''}" ${i ? 'inert' : ''}>
           ${bg ? `<div class="hero-bg ${httpsUrl(f.fondo) ? '' : 'blur'}" ${i === 0 ? `style="background-image:url('${esc(bg)}')"` : `data-bg="${esc(bg)}"`}></div>` : ''}
           <div class="hero-in">
             <span class="tag">${i === 0 ? 'Lo más nuevo' : 'Recién publicada'}</span>
             <h1>${esc(f.titulo)}</h1>
-            <div class="meta-line"><span>${esc(f.anio || '')}</span>${f.duracion ? `<span>${esc(fmtDur(f.duracion))}</span>` : ''}${qBadges(f, 'chip q')}${gensOf(f)[0] ? `<span class="chip">${esc(cap(gensOf(f)[0]))}</span>` : ''}</div>
+            <div class="meta-line"><span>${esc(f.anio || '')}</span>${f.duracion ? `<span>${esc(fmtDur(f.duracion))}</span>` : ''}${isSerie(f) ? `<span>${epsOf(f).length} temporada${epsOf(f).length === 1 ? '' : 's'}</span>` : ''}${qBadges(f, 'chip q')}${gensOf(f)[0] ? `<span class="chip">${esc(cap(gensOf(f)[0]))}</span>` : ''}</div>
             <p>${esc(f.sinopsis || '')}</p>
             <div class="actions">
-              <a class="btn" href="#/ver/${encodeURIComponent(f.id)}">▶ Ver película</a>
+              <a class="btn" href="#/ver/${encodeURIComponent(f.id)}">▶ Ver ${isSerie(f) ? 'serie' : 'película'}</a>
               ${parseSource(f.trailer) ? `<button class="btn ghost htrailer" data-i="${i}">Ver tráiler</button>` : ''}
             </div>
           </div>
@@ -1107,6 +1145,9 @@ import { Cloud } from './auth.js';
       const at = ep ? flat.findIndex(x => x.t === season.n && x.e === ep.n) : -1;
       const epHref = x => `#/ver/${encodeURIComponent(p.id)}?t=${x.t}&e=${x.e}`;
       const epTag = ep ? `T${season.n} · E${ep.n}` : '';
+      const nx = serie && at >= 0 ? flat[at + 1] : null;
+      const nxTitulo = nx ? (((seasons.find(t => t.n === nx.t) || {}).episodios || []).find(e => e.n === nx.e) || {}).titulo || '' : '';
+      const nxOpts = nx ? { goNext: () => { location.hash = epHref(nx); }, nextLabel: `T${nx.t} · E${nx.e}${nxTitulo ? ' — ' + nxTitulo : ''}` } : {};
       const live = !draft && visible(p); // borradores y programadas se ven como vista previa, sin reacciones ni compartir
       if (live) { recents.push(p); lastWatched = p.id; }
       document.title = `${p.titulo}${serie && ep ? ' ' + epTag : ''} — Pelipe.online`;
@@ -1163,7 +1204,7 @@ import { Cloud } from './auth.js';
         </div>
       </div></div>
         <div class="wrap">${rowLocal('Más como esta 😎', similar)}</div>`;
-      if (first) wireVideo(app, { ...p, url: first }, { track: live && (!serie || !!ep), ep: serie && ep ? { t: season.n, e: ep.n } : null, next: serie && at >= 0 ? flat[at + 1] : null });
+      if (first) wireVideo(app, { ...p, url: first }, { track: live && (!serie || !!ep), ep: serie && ep ? { t: season.n, e: ep.n } : null, next: serie && at >= 0 ? flat[at + 1] : null, ...nxOpts });
       // Cambiar de calidad/servidor: se sigue desde el mismo minuto
       const playSrv = k => {
         const s = srvs[k];
@@ -1179,7 +1220,7 @@ import { Cloud } from './auth.js';
         app.querySelectorAll('#servers [data-k]').forEach(b => { const on = Number(b.dataset.k) === k; b.classList.toggle('on', on); if (b.classList.contains('sort')) b.setAttribute('aria-pressed', on); });
         const rs = document.getElementById('resume'), pb = document.getElementById('pbar');
         rs.hidden = true; pb.hidden = true; pb.innerHTML = '';
-        wireVideo(app, { ...p, url: s.u }, { track: live && (!serie || !!ep), startAt: t, keepPlaying: was, ep: serie && ep ? { t: season.n, e: ep.n } : null, next: serie && at >= 0 ? flat[at + 1] : null });
+        wireVideo(app, { ...p, url: s.u }, { track: live && (!serie || !!ep), startAt: t, keepPlaying: was, ep: serie && ep ? { t: season.n, e: ep.n } : null, next: serie && at >= 0 ? flat[at + 1] : null, ...nxOpts });
       };
       const seaBox = document.getElementById('seasons');
       if (seaBox) seaBox.addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b && Number(b.dataset.t) !== season.n) location.hash = epHref({ t: b.dataset.t, e: 1 }); });
