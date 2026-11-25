@@ -635,7 +635,7 @@ footer>.apkbtn{margin-left:auto;align-self:center}
 
 /* Siguiente episodio (cuenta atrás tipo Netflix) */
 .player{position:relative}
-.pnext{position:absolute;right:16px;bottom:64px;z-index:30;width:min(380px,90%);padding:12px;border-radius:14px;background:rgba(14,14,20,.94);border:1px solid rgba(255,255,255,.14);box-shadow:0 16px 44px rgba(0,0,0,.6);backdrop-filter:blur(10px);animation:pedirIn .25s ease-out}
+.pnext{transform:translateZ(0);will-change:transform,opacity;position:absolute;right:16px;bottom:64px;z-index:30;width:min(380px,90%);padding:12px;border-radius:14px;background:rgba(14,14,20,.94);border:1px solid rgba(255,255,255,.14);box-shadow:0 16px 44px rgba(0,0,0,.6);backdrop-filter:blur(10px);animation:pedirIn .25s ease-out}
 .pnext-r{display:flex;gap:12px;align-items:center}
 .pnext-r img{width:112px;height:63px;object-fit:cover;border-radius:8px;flex:none;background:#222}
 .pnext-t{min-width:0}

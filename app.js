@@ -513,6 +513,7 @@ import { Cloud } from './auth.js';
       box.setAttribute('aria-label', 'Siguiente episodio');
       box.innerHTML = `<div class="pnext-r">${opts.nextThumb ? `<img src="${esc(opts.nextThumb)}" alt="">` : ''}<div class="pnext-t"><small>Siguiente episodio</small><b>${esc(opts.nextLabel || '')}</b><p>Empieza en <span class="pn-s">${AV}</span> s</p></div></div><div class="pnext-bar"><i></i></div><div class="pnext-b"><button type="button" class="btn sm" data-a="ya">▶ Reproducir ahora</button><button type="button" class="btn ghost sm" data-a="no">Cancelar</button></div>`;
       pl.appendChild(box);
+      void box.offsetWidth; // fuerza el pintado inmediato
       box.addEventListener('click', e => {
         const b = e.target.closest('[data-a]');
         if (!b) return;
@@ -521,7 +522,7 @@ import { Cloud } from './auth.js';
       const ya = box.querySelector('[data-a="ya"]');
       if (!document.fullscreenElement) ya.focus({ preventScroll: true });
     };
-    v.addEventListener('timeupdate', () => {
+    const revisar = () => {
       const d = v.duration, t = v.currentTime, r = d - t;
       if (!isFinite(d) || d < 90 || ido) return;
       if (r > AV + 1) { cancelado = false; quitar(); return; } // si vuelve atrás, se rearma
@@ -530,7 +531,10 @@ import { Cloud } from './auth.js';
       const n = Math.max(1, Math.ceil(r)), s = box.querySelector('.pn-s');
       if (s.textContent !== String(n)) s.textContent = n;
       box.querySelector('.pnext-bar i').style.width = Math.min(100, (1 - r / AV) * 100) + '%';
-    });
+    };
+    v.addEventListener('timeupdate', revisar);
+    // refuerzo: en pantalla completa el navegador a veces no avisa/pinta sin mover el mouse; se revisa cada 0,5 s sin depender de eventos
+    const tic = setInterval(() => { if (!document.contains(v)) { clearInterval(tic); return; } if (!v.paused) revisar(); }, 500);
     v.addEventListener('ended', () => { if (cancelado) quitar(); else ir(); });
   }
   const openTrailer = url => { const s = parseSource(url); if (s) openModal(playerHtml(s)); };
