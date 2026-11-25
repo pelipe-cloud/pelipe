@@ -647,3 +647,6 @@ footer>.apkbtn{margin-left:auto;align-self:center}
 .pnext-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .3s linear}
 .pnext-b{display:flex;gap:8px}
 .pnext-b .btn{flex:1;justify-content:center}
+
+/* Pantalla completa: capa casi invisible sobre el video para que el navegador no lo dibuje "por encima" de la P y del aviso (pasa con algunos videos 4:3) */
+.player:fullscreen::after,.player:-webkit-full-screen::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.012);pointer-events:none;z-index:1}
