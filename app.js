@@ -497,41 +497,41 @@ import { Cloud } from './auth.js';
     if (opts.goNext) siguienteAuto(v, opts);
     if (autoplayNext) { autoplayNext = false; v.play().catch(() => { }); } // llegó aquí por "siguiente episodio" automático
   }
-  // Siguiente episodio estilo Netflix: al terminar, cuenta regresiva de 10 s (Reproducir ahora / Cancelar)
+  // Siguiente episodio estilo Netflix: 20 s antes de terminar aparece la cuenta regresiva (miniatura + Reproducir ahora / Cancelar)
   let autoplayNext = false;
   function siguienteAuto(v, opts) {
     const pl = v.closest('.player');
     if (!pl || !opts.goNext) return;
-    let box = null, tick = 0;
-    const quitar = () => { clearInterval(tick); tick = 0; if (box) { box.remove(); box = null; } };
-    v.addEventListener('ended', () => {
-      if (box) return;
-      let n = 10;
+    const AV = 20; // segundos antes del final
+    let box = null, cancelado = false, ido = false;
+    const quitar = () => { if (box) { box.remove(); box = null; } };
+    const ir = () => { if (ido) return; ido = true; quitar(); autoplayNext = true; opts.goNext(); };
+    const mostrar = () => {
       box = document.createElement('div');
       box.className = 'pnext';
       box.setAttribute('role', 'dialog');
       box.setAttribute('aria-label', 'Siguiente episodio');
-      box.innerHTML = `<small>Siguiente episodio</small><b>${esc(opts.nextLabel || '')}</b><p>Empieza en <span class="pn-s">${n}</span> s</p><div class="pnext-bar"><i></i></div><div class="pnext-b"><button type="button" class="btn sm" data-a="ya">▶ Reproducir ahora</button><button type="button" class="btn ghost sm" data-a="no">Cancelar</button></div>`;
+      box.innerHTML = `<div class="pnext-r">${opts.nextThumb ? `<img src="${esc(opts.nextThumb)}" alt="">` : ''}<div class="pnext-t"><small>Siguiente episodio</small><b>${esc(opts.nextLabel || '')}</b><p>Empieza en <span class="pn-s">${AV}</span> s</p></div></div><div class="pnext-bar"><i></i></div><div class="pnext-b"><button type="button" class="btn sm" data-a="ya">▶ Reproducir ahora</button><button type="button" class="btn ghost sm" data-a="no">Cancelar</button></div>`;
       pl.appendChild(box);
-      box.querySelector('.pnext-bar i').style.animation = 'pnbar 10s linear forwards';
-      box.querySelector('[data-a="ya"]').focus({ preventScroll: true });
       box.addEventListener('click', e => {
         const b = e.target.closest('[data-a]');
         if (!b) return;
-        const ya = b.dataset.a === 'ya';
-        quitar();
-        if (ya) { autoplayNext = true; opts.goNext(); }
+        if (b.dataset.a === 'ya') ir(); else { cancelado = true; quitar(); }
       });
-      tick = setInterval(() => {
-        if (!document.body.contains(v)) { quitar(); return; } // ya cambió de página o de servidor
-        n--;
-        const s = box && box.querySelector('.pn-s');
-        if (s) s.textContent = n;
-        if (n <= 0) { quitar(); autoplayNext = true; opts.goNext(); }
-      }, 1000);
+      const ya = box.querySelector('[data-a="ya"]');
+      if (!document.fullscreenElement) ya.focus({ preventScroll: true });
+    };
+    v.addEventListener('timeupdate', () => {
+      const d = v.duration, t = v.currentTime, r = d - t;
+      if (!isFinite(d) || d < 90 || ido) return;
+      if (r > AV + 1) { cancelado = false; quitar(); return; } // si vuelve atrás, se rearma
+      if (r <= 0.3 || cancelado) return;
+      if (!box) mostrar();
+      const n = Math.max(1, Math.ceil(r)), s = box.querySelector('.pn-s');
+      if (s.textContent !== String(n)) s.textContent = n;
+      box.querySelector('.pnext-bar i').style.width = Math.min(100, (1 - r / AV) * 100) + '%';
     });
-    v.addEventListener('play', quitar);
-    v.addEventListener('seeking', quitar);
+    v.addEventListener('ended', () => { if (cancelado) quitar(); else ir(); });
   }
   const openTrailer = url => { const s = parseSource(url); if (s) openModal(playerHtml(s)); };
 
@@ -1147,7 +1147,8 @@ import { Cloud } from './auth.js';
       const epTag = ep ? `T${season.n} · E${ep.n}` : '';
       const nx = serie && at >= 0 ? flat[at + 1] : null;
       const nxTitulo = nx ? (((seasons.find(t => t.n === nx.t) || {}).episodios || []).find(e => e.n === nx.e) || {}).titulo || '' : '';
-      const nxOpts = nx ? { goNext: () => { location.hash = epHref(nx); }, nextLabel: `T${nx.t} · E${nx.e}${nxTitulo ? ' — ' + nxTitulo : ''}` } : {};
+      const nxThumb = httpsUrl(p.fondo) ? tmdbImg(p.fondo, 300) : tmdbImg(httpsUrl(p.poster), 342);
+      const nxOpts = nx ? { goNext: () => { location.hash = epHref(nx); }, nextLabel: `T${nx.t} · E${nx.e}${nxTitulo ? ' — ' + nxTitulo : ''}`, nextThumb: nxThumb } : {};
       const live = !draft && visible(p); // borradores y programadas se ven como vista previa, sin reacciones ni compartir
       if (live) { recents.push(p); lastWatched = p.id; }
       document.title = `${p.titulo}${serie && ep ? ' ' + epTag : ''} — Pelipe.online`;
