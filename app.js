@@ -522,6 +522,123 @@ import { Cloud } from './auth.js';
       return r;
     } catch { return null; }
   }
+  /* ---------- Solicita tu película: caja flotante bajo el banner. La petición llega por correo (FormSubmit) ---------- */
+  const PEDIR_MAIL = 'pelipepubs@gmail.com';
+  const pedirHtml = () => `<div class="pedir" id="pedir" data-nosnippet>
+      <button type="button" class="pedir-btn" id="pd-abrir" aria-expanded="false" aria-controls="pd-caja">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="9" width="30" height="24" rx="3"/><path d="M5 15h30M12 9v6M20 9v6M28 9v6"/><circle cx="36" cy="34" r="9" fill="#14141c"/><path d="M36 29.5v9M31.5 34h9"/></svg>
+        <span><b>¿No encuentras tu película?</b><small>Solicítala y la buscamos</small></span>
+      </button>
+      <div class="pedir-box" id="pd-caja" hidden role="dialog" aria-label="Solicita tu película">
+        <div id="pd-v1">
+          <div class="pedir-top"><h3>Solicita tu película</h3><button type="button" class="pedir-x" id="pd-x" aria-label="Cerrar">✕</button></div>
+          <p class="sub">Escribe el título y elige la correcta de la lista.</p>
+          <div class="pedir-in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="pd-q" placeholder="Ej: Matrix, Coco, Gladiador…" autocomplete="off" maxlength="120" aria-label="Título de la película o serie"></div>
+          <ul class="psug" id="pd-sug"></ul>
+          <div class="pedir-mail"><label for="pd-mail">Tu correo (opcional, para avisarte cuando esté)</label><input id="pd-mail" type="email" placeholder="tucorreo@ejemplo.com" autocomplete="email" maxlength="120"></div>
+          <input type="text" id="pd-honey" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+          <div class="pedir-send"><small>Máximo 3 solicitudes por día. Revisamos todas.</small><button type="button" class="pedir-go" id="pd-go" disabled>Enviar solicitud</button></div>
+        </div>
+        <div id="pd-v2" class="pedir-ok" hidden>
+          <div class="chk">✓</div><h3>¡Solicitud enviada!</h3><p id="pd-okt"></p><button type="button" class="btn" id="pd-otra">Pedir otra</button>
+        </div>
+      </div>
+    </div>`;
+
+  function initPedir(all) {
+    const $ = id => document.getElementById(id);
+    const box = $('pd-caja');
+    if (!box) return;
+    const btn = $('pd-abrir'), q = $('pd-q'), ul = $('pd-sug'), go = $('pd-go'), mail = $('pd-mail');
+    let sel = null, ult = [], timer = 0, seq = 0;
+    const hoy = () => new Date().toISOString().slice(0, 10);
+    const usados = () => { try { const o = JSON.parse(lsGet('pelipe:pedidos') || '{}'); return o.d === hoy() ? { d: o.d, n: o.n || 0, t: o.t || [] } : { d: hoy(), n: 0, t: [] }; } catch { return { d: hoy(), n: 0, t: [] }; } };
+    const abrir = v => { box.hidden = !v; btn.setAttribute('aria-expanded', String(v)); if (v) setTimeout(() => q.focus(), 60); };
+    btn.addEventListener('click', () => abrir(box.hidden));
+    $('pd-x').addEventListener('click', () => { abrir(false); btn.focus(); });
+    box.addEventListener('keydown', e => { if (e.key === 'Escape') { abrir(false); btn.focus(); } });
+    const fuera = e => {
+      if (!document.body.contains(box)) { document.removeEventListener('pointerdown', fuera); return; }
+      if (!box.hidden && !$('pedir').contains(e.target)) abrir(false);
+    };
+    document.addEventListener('pointerdown', fuera);
+
+    // ¿Ya está en el catálogo? Por id de TMDB o por título + año
+    const enCat = r => {
+      const t = norm(r.title || r.name), o = norm(r.original_title || r.original_name), y = (r.release_date || r.first_air_date || '').slice(0, 4);
+      return all.find(p => (p.tmdb && String(p.tmdb) === String(r.id)) || ((norm(p.titulo) === t || norm(p.titulo) === o) && (!y || !p.anio || Math.abs(Number(p.anio) - Number(y)) <= 1)));
+    };
+    const pinta = () => {
+      ul.innerHTML = ult.length ? ult.map((r, i) => {
+        const nombre = r.title || r.name || '', y = (r.release_date || r.first_air_date || '').slice(0, 4), ya = enCat(r);
+        const pst = r.poster_path ? `<img src="https://image.tmdb.org/t/p/w92${esc(r.poster_path)}" alt="" loading="lazy">` : `<div class="ppst" style="background:#2a2a38">${esc(nombre.slice(0, 2).toUpperCase())}</div>`;
+        const lado = ya ? `<a class="pya" href="${esc(ya.href || '#/ver/' + encodeURIComponent(ya.id))}">Ya está en Pelipe · Ver</a>` : (sel && sel.id === r.id ? '<span class="sel-ok">✓</span>' : '');
+        return `<li data-i="${i}" class="${ya ? 'ya' : ''}${sel && sel.id === r.id ? ' sel' : ''}">${pst}<div><div class="ptt">${esc(nombre)}</div><div class="pmt">${esc(y || 's. f.')} · ${r.media_type === 'tv' ? 'Serie' : 'Película'}</div></div>${lado}</li>`;
+      }).join('') : '<li class="vacio">Sin resultados. Prueba con otro título.</li>';
+    };
+    const libre = v => { sel = v.length >= 2 ? { libre: true, title: v } : null; go.disabled = !sel; };
+    q.addEventListener('input', () => {
+      clearTimeout(timer);
+      const v = q.value.trim();
+      sel = null; go.disabled = true;
+      if (!hasTmdb()) { libre(v); return; }
+      if (v.length < 2) { ult = []; ul.innerHTML = ''; return; }
+      timer = setTimeout(async () => {
+        const mi = ++seq;
+        try {
+          const rs = ((await tmdb('/search/multi', { query: v, include_adult: 'false' })).results || []).filter(r => r.media_type === 'movie' || r.media_type === 'tv').slice(0, 8);
+          if (mi !== seq) return;
+          ult = rs; pinta();
+        } catch {
+          if (mi !== seq) return;
+          ult = []; ul.innerHTML = '<li class="vacio">No se pudo buscar ahora. Escribe el título completo y envía igual.</li>';
+          libre(v);
+        }
+      }, 350);
+    });
+    ul.addEventListener('click', e => {
+      if (e.target.closest('a')) { abrir(false); return; }
+      const li = e.target.closest('li[data-i]');
+      if (!li || li.classList.contains('ya')) return;
+      sel = ult[Number(li.dataset.i)] || null;
+      go.disabled = !sel;
+      pinta();
+    });
+    go.addEventListener('click', async () => {
+      if (!sel || $('pd-honey').value) return;
+      const u = usados();
+      if (u.n >= 3) { toast('Ya enviaste 3 solicitudes hoy. Vuelve mañana 🙂'); return; }
+      const nombre = sel.libre ? sel.title : (sel.title || sel.name || ''), anio = sel.libre ? '' : (sel.release_date || sel.first_air_date || '').slice(0, 4);
+      const clave = norm(nombre) + anio;
+      if (u.t.includes(clave)) { toast('Ya pediste esta película hoy. ¡La revisaremos pronto!'); return; }
+      const tipo = sel.libre ? 'Película o serie' : (sel.media_type === 'tv' ? 'Serie' : 'Película');
+      const correo = mail.value.trim(), correoOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
+      const body = {
+        _subject: 'Pelipe · Solicitud: ' + nombre + (anio ? ' (' + anio + ')' : ''), _template: 'table', _captcha: 'false', _honey: '',
+        Título: nombre, Año: anio || '—', Tipo: tipo,
+        'Enlace TMDB': sel.libre ? '(escrito a mano)' : 'https://www.themoviedb.org/' + (sel.media_type === 'tv' ? 'tv' : 'movie') + '/' + sel.id,
+        'Correo para avisar': correoOk ? correo : '(no dejó correo)', Fecha: new Date().toLocaleString('es-CO')
+      };
+      if (correoOk) body.email = correo; // FormSubmit lo usa como "responder a"
+      go.disabled = true; go.textContent = 'Enviando…';
+      try {
+        const r = await fetch('https://formsubmit.co/ajax/' + PEDIR_MAIL, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || String(j.success) === 'false') throw new Error(j.message || 'HTTP ' + r.status);
+        u.n++; u.t.push(clave); lsSet('pelipe:pedidos', JSON.stringify(u));
+        $('pd-okt').textContent = 'Recibimos tu solicitud de «' + nombre + (anio ? ' (' + anio + ')' : '') + '». La revisaremos pronto.';
+        $('pd-v1').hidden = true; $('pd-v2').hidden = false;
+      } catch {
+        toast('No se pudo enviar la solicitud. Inténtalo de nuevo en un rato.');
+      }
+      go.textContent = 'Enviar solicitud'; go.disabled = !sel;
+    });
+    $('pd-otra').addEventListener('click', () => {
+      sel = null; ult = []; q.value = ''; ul.innerHTML = ''; go.disabled = true;
+      $('pd-v2').hidden = true; $('pd-v1').hidden = false; q.focus();
+    });
+  }
+
   async function home() {
     setNav('inicio');
     if (!Cloud.enabled) { app.innerHTML = needCloud(); return; }
@@ -561,6 +678,7 @@ import { Cloud } from './auth.js';
         ${slides.length > 1 ? `<button class="arrow prev" aria-label="Anterior">‹</button><button class="arrow next" aria-label="Siguiente">›</button>
         <div class="dots">${slides.map((_, i) => `<button class="${i === 0 ? 'on' : ''}" aria-label="Película ${i + 1}"></button>`).join('')}</div>` : ''}
       </section>
+      ${pedirHtml()}
       <div class="wrap" data-nosnippet>
         ${rowLocal('Continuar viendo 👀', cont)}
         ${rowLocal('Subidas recientes 🍿', recientes)}
@@ -569,6 +687,7 @@ import { Cloud } from './auth.js';
         <div id="rk2"></div>
         ${rowLocal('Te recomendamos… 👌', shuffle(list).slice(0, 10))}
       </div>`;
+    initPedir([...list, ...serAll]);
     // Rankings por reacciones: se rellenan cuando llegan los conteos (en caché 30 min)
     // Se cuentan películas (100 más recientes) y series (50 más recientes) en la misma pasada
     const rankIn = [...list.slice(0, 100), ...serAll.slice(0, 50)];
