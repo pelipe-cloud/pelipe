@@ -704,8 +704,10 @@ import { Cloud } from './auth.js';
         u.n++; u.t.push(clave); lsSet('pelipe:pedidos', JSON.stringify(u));
         $('pd-okt').textContent = 'Recibimos tu solicitud de «' + nombre + (anio ? ' (' + anio + ')' : '') + '». La revisaremos pronto.';
         $('pd-v1').hidden = true; $('pd-v2').hidden = false;
-      } catch {
-        toast('No se pudo enviar la solicitud. Inténtalo de nuevo en un rato.');
+      } catch (err) {
+        const m = String((err && err.message) || '');
+        console.warn('Solicitud no enviada:', m);
+        toast(/activ/i.test(m) ? 'Falta activar el formulario: abre el correo de FormSubmit en pelipepubs@gmail.com y pulsa «Activate Form».' : 'No se pudo enviar la solicitud. Inténtalo de nuevo en un rato.');
       }
       go.textContent = 'Enviar solicitud'; go.disabled = !sel;
     });
