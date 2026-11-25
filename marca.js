@@ -124,6 +124,26 @@
     }
   }, true);
 
+  // Doble clic sobre el video: el navegador maximiza solo el <video> (se pierden la P y la caja de siguiente episodio).
+  // Lo desviamos a nuestro botón, que maximiza el reproductor completo.
+  document.addEventListener('dblclick', e => {
+    const v = e.target && e.target.closest && e.target.closest('.player video');
+    if (!v) return;
+    const b = v.closest('.player').querySelector('.pfs');
+    if (!b) return;
+    e.preventDefault();
+    e.stopPropagation();
+    b.click();
+  }, true);
+  // Red de seguridad: si algo maximiza solo el <video> (menú del navegador, extensiones), se pasa al reproductor completo
+  document.addEventListener('fullscreenchange', () => {
+    const f = fsEl();
+    if (f && f.tagName === 'VIDEO' && f.closest && f.closest('.player')) {
+      const p = f.closest('.player');
+      const rq = p.requestFullscreen || p.webkitRequestFullscreen;
+      try { const r = rq.call(p); if (r && r.catch) r.catch(() => { }); } catch (_) { }
+    }
+  });
   document.addEventListener('fullscreenchange', () => {
     if (!fsEl()) { try { screen.orientation.unlock(); } catch (_) { } }
   });
