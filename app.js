@@ -514,6 +514,9 @@ import { Cloud } from './auth.js';
       box.innerHTML = `<div class="pnext-r">${opts.nextThumb ? `<img src="${esc(opts.nextThumb)}" alt="">` : ''}<div class="pnext-t"><small>Siguiente episodio</small><b>${esc(opts.nextLabel || '')}</b><p>Empieza en <span class="pn-s">${AV}</span> s</p></div></div><div class="pnext-bar"><i></i></div><div class="pnext-b"><button type="button" class="btn sm" data-a="ya">▶ Reproducir ahora</button><button type="button" class="btn ghost sm" data-a="no">Cancelar</button></div>`;
       pl.appendChild(box);
       void box.offsetWidth; // fuerza el pintado inmediato
+      // En pantalla completa algunos navegadores no repintan lo nuevo hasta que hay actividad del mouse: la simulamos (igual que mover el mouse, los botones aparecen 3 s)
+      pl.classList.add('act');
+      try { pl.dispatchEvent(new MouseEvent('mousemove', { bubbles: true })); } catch { }
       box.addEventListener('click', e => {
         const b = e.target.closest('[data-a]');
         if (!b) return;
