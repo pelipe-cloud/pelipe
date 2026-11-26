@@ -1377,11 +1377,41 @@ import { Cloud } from './auth.js';
       t.episodes.forEach(x => {
         const a = mp.get(x.episode_number);
         if (!a) return;
-        if (!x.overview && a.overview) x.overview = a.overview;
+        if (!x.overview && a.overview) { x.overview = a.overview; if (lg === 'en-US') x._en = true; }
         if ((!x.name || /^episod[io]\s*\d+$/i.test(String(x.name).trim())) && a.name && !/^(episod[eio]|episodio)\s*\d+$/i.test(String(a.name).trim())) x.name = a.name;
       });
     }
     return t;
+  }
+
+  // Traducción automática inglés → español (MyMemory, gratis y sin clave; el correo sube su límite diario). Si falla, se deja el inglés.
+  let traducirOk = true;
+  async function aEspanol(texto) {
+    if (!traducirOk || !texto) return texto;
+    try {
+      const u = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(texto.slice(0, 450)) + '&langpair=en|es&de=' + encodeURIComponent(PEDIR_MAIL);
+      const j = await (await fetch(u)).json();
+      const t = j && j.responseData && j.responseData.translatedText;
+      if (!t || Number(j.responseStatus) !== 200 || /MYMEMORY WARNING|INVALID|QUERY LENGTH/i.test(t)) { traducirOk = false; return texto; }
+      return String(t).replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+    } catch { traducirOk = false; return texto; }
+  }
+  // Sinopsis por episodio {"1x30": "..."}: las que solo existen en inglés se traducen solas
+  async function epSinopsis(seas, nums) {
+    const out = {}, pend = [];
+    seas.forEach((t, i) => t && (t.episodes || []).forEach(x => {
+      if (!x.overview) return;
+      const k = nums[i] + 'x' + x.episode_number, tx = String(x.overview).replace(/\s+/g, ' ').trim().slice(0, 400);
+      out[k] = tx;
+      if (x._en) pend.push(k);
+    }));
+    traducirOk = true;
+    let n = 0;
+    for (let i = 0; i < pend.length; i += 4) {
+      await Promise.all(pend.slice(i, i + 4).map(async k => { const tr = await aEspanol(out[k]); if (tr !== out[k]) { out[k] = tr.slice(0, 400); n++; } }));
+      if (!traducirOk) break;
+    }
+    return { map: out, nTrad: n, nIng: pend.length };
   }
 
   async function tmdbArt(titulo, anio, tv) {
@@ -1844,8 +1874,9 @@ import { Cloud } from './auth.js';
             const rows = cur.split('\n');
             const ts = [...new Set(rows.map(l => (l.trim().split('|')[0].trim().match(/^(?:s|t)?\s*(\d{1,2})\s*[xe]\s*\d{1,3}$/i) || [])[1]).filter(Boolean).map(Number))].filter(n => all.includes(n));
             const seas = await Promise.all(ts.map(n => tmdbSeason(m.id, n)));
-            const names = new Map(), sinNew = {};
-            seas.forEach((t, i) => t && (t.episodes || []).forEach(x => { names.set(ts[i] + 'x' + x.episode_number, String(x.name || '').replace(/\|/g, '-').trim()); if (x.overview) sinNew[ts[i] + 'x' + x.episode_number] = String(x.overview).replace(/\s+/g, ' ').trim().slice(0, 400); }));
+            const names = new Map();
+            seas.forEach((t, i) => t && (t.episodes || []).forEach(x => { names.set(ts[i] + 'x' + x.episode_number, String(x.name || '').replace(/\|/g, '-').trim()); }));
+            const sr = await epSinopsis(seas, ts), sinNew = sr.map;
             sf.elements.epsin.value = JSON.stringify(sinNew); const nSin = Object.keys(sinNew).length;
             let n = 0;
             sf.elements.episodios.value = rows.map(l => {
@@ -1855,12 +1886,12 @@ import { Cloud } from './auth.js';
               if (!nm || (old && !/^episodio\s*\d+$/i.test(old))) return l;
               n++; c[1] = ' ' + nm + ' '; return c.join('|');
             }).join('\n');
-            note = (n ? ` Puse el nombre oficial a ${n} episodio(s); los enlaces no cambiaron.` : ' Tus episodios ya tenían nombre; no cambié nada.') + (nSin ? ` Cargué la sinopsis de ${nSin} episodio(s).` : '');
+            note = (n ? ` Puse el nombre oficial a ${n} episodio(s); los enlaces no cambiaron.` : ' Tus episodios ya tenían nombre; no cambié nada.') + (nSin ? ` Cargué la sinopsis de ${nSin} episodio(s)` + (sr.nTrad ? `; traduje ${sr.nTrad} del inglés automáticamente (revísalas)` : sr.nIng ? `; ${sr.nIng} quedaron en inglés (no se pudo traducir ahora)` : '') + '.' : '');
           } else if (want.length) {
             const seas = await Promise.all(want.map(n => tmdbSeason(m.id, n)));
             const lines = seas.flatMap((t, i) => t ? (t.episodes || []).map(x => `${want[i]}x${String(x.episode_number).padStart(2, '0')} | ${String(x.name || '').replace(/\|/g, '-').trim()} | lat | `) : []);
             setS('episodios', lines.join('\n'));
-            const sinNew = {}; seas.forEach((t, i) => t && (t.episodes || []).forEach(x => { if (x.overview) sinNew[want[i] + 'x' + x.episode_number] = String(x.overview).replace(/\s+/g, ' ').trim().slice(0, 400); }));
+            const sr2 = await epSinopsis(seas, want), sinNew = sr2.map;
             sf.elements.epsin.value = JSON.stringify(sinNew);
             note = lines.length ? ` Dejé ${lines.length} episodio(s) con su título: agrega el enlace al final de cada línea (y borra las que no subirás).` : '';
           }
