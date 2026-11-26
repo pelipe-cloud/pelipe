@@ -690,3 +690,9 @@ footer>.apkbtn{margin-left:auto;align-self:center}
   .pback{left:7%}.pfwd{right:7%}
   .player.paused .pskip,.player.paused .pfs{opacity:.9}
 }
+
+/* Maximizar: esquina superior izquierda (ya no queda atravesado junto al volumen y los tres puntos del reproductor) */
+.pfs{right:auto;bottom:auto;left:clamp(10px,2.6%,18px);top:clamp(10px,2.6%,18px);width:42px;height:42px;background:rgba(11,11,16,.55);border:1px solid rgba(255,255,255,.35)}
+.pfs svg{width:22px;height:22px}
+.player:fullscreen .pfs,.player:-webkit-full-screen .pfs{right:auto;bottom:auto;left:2.6%;top:3%;width:54px;height:54px}
+.player:fullscreen .pfs svg,.player:-webkit-full-screen .pfs svg{width:28px;height:28px}
