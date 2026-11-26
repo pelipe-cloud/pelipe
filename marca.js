@@ -114,6 +114,17 @@
       setTimeout(() => m.classList.remove('wink'), 900);
     });
   }
+  // La "P" del logo de la página también guiña (primero a los 6 s y luego cada 40 s)
+  function guinarLogo() {
+    document.querySelectorAll('.logo-p').forEach(m => {
+      m.classList.remove('wink');
+      void m.getBoundingClientRect();
+      m.classList.add('wink');
+      setTimeout(() => m.classList.remove('wink'), 900);
+    });
+  }
+  setTimeout(guinarLogo, 6000);
+  setInterval(guinarLogo, 40000);
   setTimeout(guinar, 15000);          // primer guiño poco después de abrir el video
   setInterval(guinar, 120000);        // luego cada 2 minutos
   const buscar = () => document.querySelectorAll('.player').forEach(p => { marca(p); mejorar(p); });

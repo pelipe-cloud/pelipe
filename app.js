@@ -600,7 +600,7 @@ import { Cloud } from './auth.js';
   const pedirHtml = () => `<div class="pedir" id="pedir" data-nosnippet>
       <button type="button" class="pedir-btn" id="pd-abrir" aria-expanded="false" aria-controls="pd-caja">
         <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="9" width="30" height="24" rx="3"/><path d="M5 15h30M12 9v6M20 9v6M28 9v6"/><circle cx="36" cy="34" r="9" fill="#14141c"/><path d="M36 29.5v9M31.5 34h9"/></svg>
-        <span><b>¿No encuentras tu película?</b><small>Solicítala y la buscamos</small></span>
+        <span><b>¿No encuentras tu Película/Serie?</b><small>Solicítala y la buscamos</small></span>
       </button>
       <a class="apkbtn" href="/app/" aria-label="Descargar la app de Pelipe para TV, Chromecast y celulares">
         <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="30" height="20" rx="3"/><path d="M13 34h10M18 28v6"/><rect x="33" y="17" width="12" height="23" rx="3" fill="#14141c"/><path d="M37.5 36.5h3"/><path d="M14 14.5l8 3.5-8 3.5z" fill="currentColor" stroke="none"/></svg>

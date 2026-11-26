@@ -511,6 +511,9 @@ footer a{display:inline-block;padding:5px 0}
 .pmark.wink .tri{animation:pguino .75s ease-in-out}
 @keyframes pguino{0%{transform:scaleY(1)}28%{transform:scaleY(.08)}46%{transform:scaleY(.08)}78%{transform:scaleY(1.2)}100%{transform:scaleY(1)}}
 @media(prefers-reduced-motion:reduce){.pmark.wink .tri{animation:none}}
+.logo-p .tri{transform-box:fill-box;transform-origin:center}
+.logo-p.wink .tri{animation:pguino .75s ease-in-out}
+@media(prefers-reduced-motion:reduce){.logo-p.wink .tri{animation:none}}
 
 
 /* Pantalla completa del reproductor (con la "P" de marca de agua) */
@@ -518,7 +521,6 @@ footer a{display:inline-block;padding:5px 0}
 .pfs svg{width:18px;height:18px}
 .player.act .pfs,.pfs:focus-visible{opacity:.9}
 .pfs:hover,.pfs:focus-visible{opacity:1;background:rgba(255,255,255,.18);outline:0}
-@media(hover:none){.pfs{opacity:.9}}
 /* Adelantar / atrasar 10 s */
 .pskip{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:rgba(11,11,16,.5);border:1px solid rgba(255,255,255,.35);color:#fff;opacity:0;transition:opacity .15s,background .15s}
 .pskip svg{grid-area:1/1;width:30px;height:30px}
@@ -686,5 +688,5 @@ footer>.apkbtn{margin-left:auto;align-self:center}
   .pskip{width:46px;height:46px}
   .pskip svg{width:27px;height:27px}
   .pback{left:7%}.pfwd{right:7%}
-  .player.paused .pskip{opacity:1}
+  .player.paused .pskip,.player.paused .pfs{opacity:.9}
 }
