@@ -1363,6 +1363,27 @@ import { Cloud } from './auth.js';
   }
 
   // Busca la película por título (y año) en TMDB y devuelve su póster y fondo oficiales
+  // Temporada de una serie en TMDB. Si a algún episodio le falta la sinopsis (o el nombre) en español de México,
+  // se completa con español de España y, si tampoco hay, con inglés (así no quedan episodios sin sinopsis).
+  async function tmdbSeason(id, n) {
+    const t = await tmdb('/tv/' + id + '/season/' + n).catch(() => null);
+    if (!t || !Array.isArray(t.episodes)) return t;
+    const falta = () => t.episodes.some(x => !x.overview || !x.name || /^episod[io]\s*\d+$/i.test(String(x.name).trim()));
+    for (const lg of ['es-ES', 'en-US']) {
+      if (!falta()) break;
+      const alt = await tmdb('/tv/' + id + '/season/' + n, { language: lg }).catch(() => null);
+      if (!alt || !Array.isArray(alt.episodes)) continue;
+      const mp = new Map(alt.episodes.map(x => [x.episode_number, x]));
+      t.episodes.forEach(x => {
+        const a = mp.get(x.episode_number);
+        if (!a) return;
+        if (!x.overview && a.overview) x.overview = a.overview;
+        if ((!x.name || /^episod[io]\s*\d+$/i.test(String(x.name).trim())) && a.name && !/^(episod[eio]|episodio)\s*\d+$/i.test(String(a.name).trim())) x.name = a.name;
+      });
+    }
+    return t;
+  }
+
   async function tmdbArt(titulo, anio, tv) {
     try {
       const y = /^\d{4}$/.test(anio) ? anio : '';
@@ -1822,7 +1843,7 @@ import { Cloud } from './auth.js';
             // Ya hay episodios escritos: se conservan los enlaces y solo se ponen los nombres oficiales donde el título falta o es genérico ("Episodio 3")
             const rows = cur.split('\n');
             const ts = [...new Set(rows.map(l => (l.trim().split('|')[0].trim().match(/^(?:s|t)?\s*(\d{1,2})\s*[xe]\s*\d{1,3}$/i) || [])[1]).filter(Boolean).map(Number))].filter(n => all.includes(n));
-            const seas = await Promise.all(ts.map(n => tmdb('/tv/' + m.id + '/season/' + n).catch(() => null)));
+            const seas = await Promise.all(ts.map(n => tmdbSeason(m.id, n)));
             const names = new Map(), sinNew = {};
             seas.forEach((t, i) => t && (t.episodes || []).forEach(x => { names.set(ts[i] + 'x' + x.episode_number, String(x.name || '').replace(/\|/g, '-').trim()); if (x.overview) sinNew[ts[i] + 'x' + x.episode_number] = String(x.overview).replace(/\s+/g, ' ').trim().slice(0, 400); }));
             sf.elements.epsin.value = JSON.stringify(sinNew); const nSin = Object.keys(sinNew).length;
@@ -1836,7 +1857,7 @@ import { Cloud } from './auth.js';
             }).join('\n');
             note = (n ? ` Puse el nombre oficial a ${n} episodio(s); los enlaces no cambiaron.` : ' Tus episodios ya tenían nombre; no cambié nada.') + (nSin ? ` Cargué la sinopsis de ${nSin} episodio(s).` : '');
           } else if (want.length) {
-            const seas = await Promise.all(want.map(n => tmdb('/tv/' + m.id + '/season/' + n).catch(() => null)));
+            const seas = await Promise.all(want.map(n => tmdbSeason(m.id, n)));
             const lines = seas.flatMap((t, i) => t ? (t.episodes || []).map(x => `${want[i]}x${String(x.episode_number).padStart(2, '0')} | ${String(x.name || '').replace(/\|/g, '-').trim()} | lat | `) : []);
             setS('episodios', lines.join('\n'));
             const sinNew = {}; seas.forEach((t, i) => t && (t.episodes || []).forEach(x => { if (x.overview) sinNew[want[i] + 'x' + x.episode_number] = String(x.overview).replace(/\s+/g, ' ').trim().slice(0, 400); }));
