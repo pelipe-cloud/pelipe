@@ -19,6 +19,7 @@ const KEY = 'pelipe:mail';
 /* ---------- entrar con enlace al correo (sin contraseña) ---------- */
 export async function enviarEnlace(email) {
   const { a, auth } = await fb();
+  auth.languageCode = 'es'; // el correo de Firebase sale en español
   const base = location.origin + location.pathname.replace(/[^/]*$/, '');
   await a.sendSignInLinkToEmail(auth, email, { url: base + '#/entrar', handleCodeInApp: true });
   try { localStorage.setItem(KEY, email); } catch { }
