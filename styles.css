@@ -696,3 +696,16 @@ footer>.apkbtn{margin-left:auto;align-self:center}
 .pfs svg{width:22px;height:22px}
 .player:fullscreen .pfs,.player:-webkit-full-screen .pfs{right:auto;bottom:auto;left:2.6%;top:3%;width:54px;height:54px}
 .player:fullscreen .pfs svg,.player:-webkit-full-screen .pfs svg{width:28px;height:28px}
+
+/* Navidad: luces, nieve y gorrito de nieve en el logo (se activa solo del 20 nov al 6 ene; ?navidad=1 la fuerza, ?navidad=0 la apaga) */
+.xm-cap{display:none}
+html.navidad .xm-cap{display:inline}
+.logo-p{overflow:visible}
+html.navidad .logo{padding-top:20px}
+.xm-lights{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:2}
+.xm-wire{fill:none;stroke:#1f4a2c;stroke-width:2}
+.xm-bulb{animation:xmtw 1.6s ease-in-out infinite}
+.xm-bulb:nth-child(3n){animation-delay:.5s}.xm-bulb:nth-child(3n+1){animation-delay:1s}
+@keyframes xmtw{0%,100%{opacity:1}50%{opacity:.35}}
+.xm-snow{position:absolute;pointer-events:none;z-index:3}
+@media(prefers-reduced-motion:reduce){.xm-bulb{animation:none}}

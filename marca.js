@@ -175,3 +175,52 @@
     if (!fsEl()) { try { screen.orientation.unlock(); } catch (_) { } }
   });
 })();
+
+
+/* Navidad: luces + nieve sobre el logo (del 20 de noviembre al 6 de enero; ?navidad=1 la fuerza y ?navidad=0 la apaga) */
+(function () {
+  const f = location.search + location.hash;
+  const d = new Date(), m = d.getMonth() + 1, dia = d.getDate();
+  let on = (m === 11 && dia >= 20) || m === 12 || (m === 1 && dia <= 6);
+  if (/navidad=1/.test(f)) on = true;
+  if (/navidad=0/.test(f)) on = false;
+  if (!on) return;
+  document.documentElement.classList.add('navidad');
+  const COL = ['#ff3b3b', '#3bd15f', '#ffd23b', '#3b9bff', '#ff8a3d'];
+  let flakes = [], cv = null, cx = null, anim = 0;
+  function luces(lg) {
+    let s = lg.querySelector('.xm-lights');
+    if (!s) { s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('class', 'xm-lights'); s.setAttribute('aria-hidden', 'true'); lg.insertBefore(s, lg.firstChild); }
+    const w = lg.offsetWidth, h = 34, n = Math.max(5, Math.round(w / 30));
+    s.setAttribute('viewBox', '0 0 ' + w + ' ' + h); s.style.width = w + 'px'; s.style.height = h + 'px';
+    let t = '<path class="xm-wire" d="M0 4 Q ' + w / 2 + ' 26 ' + w + ' 4"/>';
+    for (let i = 0; i <= n; i++) {
+      const k = i / n, x = k * w, y = (1 - k) * (1 - k) * 4 + 2 * (1 - k) * k * 26 + k * k * 4, c = COL[i % 5];
+      t += '<g class="xm-bulb"><line x1="' + x + '" y1="' + y + '" x2="' + x + '" y2="' + (y + 3) + '" stroke="#1f4a2c" stroke-width="2.5"/><ellipse cx="' + x + '" cy="' + (y + 8) + '" rx="3.6" ry="5" fill="' + c + '"/><ellipse cx="' + x + '" cy="' + (y + 8) + '" rx="8" ry="9.5" fill="' + c + '" opacity=".25"/></g>';
+    }
+    s.innerHTML = t;
+  }
+  function nieve(lg) {
+    if (!cv) { cv = document.createElement('canvas'); cv.className = 'xm-snow'; cv.setAttribute('aria-hidden', 'true'); lg.appendChild(cv); cx = cv.getContext('2d'); }
+    cv.style.left = '-14px'; cv.style.top = '-6px';
+    cv.width = lg.offsetWidth + 28; cv.height = lg.offsetHeight + 12;
+    flakes = Array.from({ length: 22 }, () => ({ x: Math.random() * cv.width, y: Math.random() * cv.height, r: 0.9 + Math.random() * 1.9, v: 0.25 + Math.random() * 0.7, a: Math.random() * 6 }));
+    if (!anim && !matchMedia('(prefers-reduced-motion:reduce)').matches) { anim = 1; loop(); }
+  }
+  function loop() {
+    if (!cv || !cv.isConnected) { anim = 0; return; }
+    if (!document.hidden) {
+      cx.clearRect(0, 0, cv.width, cv.height); cx.fillStyle = 'rgba(255,255,255,.9)';
+      for (const p of flakes) { p.y += p.v; p.a += 0.03; p.x += Math.sin(p.a) * 0.35; if (p.y > cv.height) { p.y = -3; p.x = Math.random() * cv.width; } cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, 7); cx.fill(); }
+    }
+    requestAnimationFrame(loop);
+  }
+  function montar() {
+    const lg = document.querySelector('header .logo') || document.querySelector('.logo');
+    if (!lg || !lg.offsetWidth) return;
+    luces(lg); nieve(lg);
+  }
+  window.addEventListener('load', montar);
+  window.addEventListener('resize', () => { clearTimeout(montar.t); montar.t = setTimeout(montar, 200); });
+  setTimeout(montar, 300);
+})();
