@@ -135,7 +135,7 @@ import { Cloud } from './auth.js';
     if (!Cloud.enabled) { acct.innerHTML = ''; return; }
     acct.innerHTML = user
       ? `${user.photoURL ? `<img class="avatar" src="${esc(user.photoURL)}" alt="" referrerpolicy="no-referrer">` : ''}<span class="uname">${esc((user.displayName || user.email || '').split(' ')[0])}</span><a class="btn ghost sm" href="#/vincular" title="Vincular la app o la TV a tu cuenta">Vincular app/TV</a><button class="btn ghost sm logout">Salir</button>`
-      : `<button class="gbtn login" type="button" aria-label="Iniciar sesión con Google">${G_SVG}<span>Iniciar sesión con Google</span></button><button class="btn ghost sm maillogin" type="button">✉ Con correo</button>`;
+      : `<span class="loginstack"><button class="gbtn login" type="button" aria-label="Iniciar sesión con Google">${G_SVG}<span>Iniciar sesión con Google</span></button><button class="btn ghost sm maillogin" type="button">✉ Con correo</button></span>`;
   }
   function note() {
     if (Cloud.enabled && !user) return `<div class="notice slim"><p>Inicia sesión con Google para guardar tus favoritas y listas en la nube y verlas desde cualquier dispositivo.</p><p style="margin-top:10px"><button class="gbtn login" type="button" aria-label="Iniciar sesión con Google">${G_SVG}<span>Iniciar sesión con Google</span></button> <button class="btn ghost sm maillogin" type="button">✉ Con correo (enlace)</button></p></div>`;

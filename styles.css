@@ -716,3 +716,7 @@ html.navidad .logo{padding-top:20px}
 #vc{max-width:190px;font-size:1.4rem;letter-spacing:.3em;text-align:center}
 .vinc h1{margin-bottom:8px}
 .dev{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;margin:8px 0;border-radius:12px;background:var(--bg3,#1d1d28)}
+
+/* Botones de Google y correo uno sobre otro (ocupan menos ancho en la cabecera) */
+.loginstack{display:inline-flex;flex-direction:column;gap:6px;align-items:stretch}
+.loginstack .gbtn,.loginstack .maillogin{justify-content:center;width:100%;padding-top:6px;padding-bottom:6px;font-size:.82rem}
