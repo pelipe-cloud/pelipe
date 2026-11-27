@@ -134,11 +134,11 @@ import { Cloud } from './auth.js';
     document.getElementById('navadmin').hidden = !canPublish();
     if (!Cloud.enabled) { acct.innerHTML = ''; return; }
     acct.innerHTML = user
-      ? `${user.photoURL ? `<img class="avatar" src="${esc(user.photoURL)}" alt="" referrerpolicy="no-referrer">` : ''}<span class="uname">${esc((user.displayName || user.email || '').split(' ')[0])}</span><button class="btn ghost sm logout">Salir</button>`
-      : `<button class="gbtn login" type="button" aria-label="Iniciar sesión con Google">${G_SVG}<span>Iniciar sesión con Google</span></button>`;
+      ? `${user.photoURL ? `<img class="avatar" src="${esc(user.photoURL)}" alt="" referrerpolicy="no-referrer">` : ''}<span class="uname">${esc((user.displayName || user.email || '').split(' ')[0])}</span><a class="btn ghost sm" href="#/vincular" title="Vincular la app o la TV a tu cuenta">Vincular app/TV</a><button class="btn ghost sm logout">Salir</button>`
+      : `<button class="gbtn login" type="button" aria-label="Iniciar sesión con Google">${G_SVG}<span>Iniciar sesión con Google</span></button><button class="btn ghost sm maillogin" type="button">✉ Con correo</button>`;
   }
   function note() {
-    if (Cloud.enabled && !user) return `<div class="notice slim"><p>Inicia sesión con Google para guardar tus favoritas y listas en la nube y verlas desde cualquier dispositivo.</p><p style="margin-top:10px"><button class="gbtn login" type="button" aria-label="Iniciar sesión con Google">${G_SVG}<span>Iniciar sesión con Google</span></button></p></div>`;
+    if (Cloud.enabled && !user) return `<div class="notice slim"><p>Inicia sesión con Google para guardar tus favoritas y listas en la nube y verlas desde cualquier dispositivo.</p><p style="margin-top:10px"><button class="gbtn login" type="button" aria-label="Iniciar sesión con Google">${G_SVG}<span>Iniciar sesión con Google</span></button> <button class="btn ghost sm maillogin" type="button">✉ Con correo (enlace)</button></p></div>`;
     if (!Cloud.enabled) return '<p class="muted">Tus favoritas y listas se guardan solo en este navegador.</p>';
     return '';
   }
@@ -1906,9 +1906,11 @@ import { Cloud } from './auth.js';
 
   /* ---------- acciones globales ---------- */
   document.addEventListener('click', e => {
-    const t = e.target.closest('.login,.logout,.rm,.dellist');
+    const t = e.target.closest('.login,.maillogin,.logout,.rm,.dellist');
     if (!t) return;
-    if (t.classList.contains('login')) {
+    if (t.classList.contains('maillogin')) {
+      mailModal();
+    } else if (t.classList.contains('login')) {
       Cloud.signIn().catch(err => {
         if (err && (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request')) return;
         toast('No se pudo iniciar sesión (' + ((err && (err.code || err.message)) || 'error') + ').');
@@ -1929,6 +1931,46 @@ import { Cloud } from './auth.js';
     }
   });
 
+  /* ---------- entrar con correo y vincular app/TV ---------- */
+  function mailModal() {
+    openModal(`<div class="panel"><h2>Entrar con tu correo</h2><p class="muted" style="margin-top:8px">Te enviamos un enlace: ábrelo en este mismo dispositivo y quedas dentro, sin contraseña.</p><form id="mf" class="mailf"><input id="me" type="email" required placeholder="tucorreo@ejemplo.com" autocomplete="email"><button class="btn" type="submit">Enviarme el enlace</button></form><p id="mm" class="muted" style="margin-top:10px"></p></div>`);
+    const f = document.getElementById('mf'), mm = document.getElementById('mm');
+    f.addEventListener('submit', async e => {
+      e.preventDefault();
+      const em = document.getElementById('me').value.trim();
+      mm.textContent = 'Enviando…';
+      try { const c = await import('./cuenta.js'); await c.enviarEnlace(em); mm.textContent = 'Listo: revisa tu correo (y la carpeta de spam) y abre el enlace.'; }
+      catch (err) { mm.textContent = 'No se pudo enviar el enlace (' + ((err && (err.code || err.message)) || 'error') + ').'; }
+    });
+  }
+  const VMSG = { sesion: 'Inicia sesión primero.', codigo: 'El código tiene 6 dígitos.', noexiste: 'Ese código no existe. Revisa que sea el que muestra la app.', usado: 'Ese código ya fue usado. Genera uno nuevo en la app.', expirado: 'El código venció (dura 15 minutos). Genera uno nuevo en la app.', red: 'No hay conexión.' };
+  async function vincularPage() {
+    document.title = 'Vincular app o TV — Pelipe.online';
+    if (!user) {
+      app.innerHTML = `<div class="wrap vinc"><h1>Vincular app o TV</h1><div class="notice"><p>Para vincular tu app o TV con tu cuenta, primero inicia sesión.</p><p style="margin-top:10px"><button class="gbtn login" type="button" aria-label="Iniciar sesión con Google">${G_SVG}<span>Iniciar sesión con Google</span></button> <button class="btn ghost sm maillogin" type="button">✉ Con correo (enlace)</button></p></div></div>`;
+      return;
+    }
+    const c0 = new URLSearchParams(location.hash.split('?')[1] || '').get('c') || '';
+    app.innerHTML = `<div class="wrap vinc"><h1>Vincular app o TV</h1><p class="muted">Abre la app de Pelipe, entra a <b>Cuenta</b> y escribe aquí el código de 6 dígitos que aparece. Así tu lista y tu "continuar viendo" quedan iguales en todos tus dispositivos.</p>
+      <form id="vf" class="mailf"><input id="vc" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="off" value="${esc(c0.replace(/\D/g, '').slice(0, 6))}"><button class="btn" type="submit">Vincular</button></form><p id="vm" class="muted"></p>
+      <h2 style="margin-top:26px">Dispositivos vinculados</h2><div id="vd" class="muted">Cargando…</div></div>`;
+    const vm = document.getElementById('vm'), vd = document.getElementById('vd');
+    const lista = async () => {
+      try {
+        const c = await import('./cuenta.js'), ds = await c.dispositivos();
+        vd.innerHTML = ds.length ? ds.map(d => `<div class="dev"><span><b>${esc(d.nombre || 'Dispositivo')}</b> <small class="muted">${esc(d.tipo || '')}</small></span><button class="btn ghost sm" data-dev="${esc(d.id)}" type="button">Desvincular</button></div>`).join('') : 'Todavía no hay ninguno.';
+        vd.querySelectorAll('[data-dev]').forEach(b => b.addEventListener('click', async () => { if (!confirm('¿Desvincular este dispositivo?')) return; try { await c.desvincular(b.dataset.dev); } catch { toast('No se pudo desvincular.'); } lista(); }));
+      } catch { vd.textContent = 'No se pudo cargar la lista.'; }
+    };
+    lista();
+    document.getElementById('vf').addEventListener('submit', async e => {
+      e.preventDefault();
+      vm.textContent = 'Vinculando…';
+      try { const c = await import('./cuenta.js'); const d = await c.vincular(document.getElementById('vc').value); vm.textContent = '✓ Listo: «' + (d.nombre || 'Dispositivo') + '» quedó vinculado. La app empezará a sincronizar sola.'; document.getElementById('vc').value = ''; lista(); }
+      catch (err) { vm.textContent = VMSG[err && err.message] || ('No se pudo vincular (' + ((err && (err.code || err.message)) || 'error') + ').'); }
+    });
+  }
+
   /* ---------- router ---------- */
   const routes = [
     [/^#\/ver\/([^?]+)/, m => watchPage(m[1])],
@@ -1942,6 +1984,7 @@ import { Cloud } from './auth.js';
     [/^#\/favoritas/, favoritas],
     [/^#\/listas\/([^?]+)/, m => listaDetalle(m[1])],
     [/^#\/listas/, listas],
+    [/^#\/vincular/, vincularPage],
     [/^#\/admin/, adminPage],
   ];
   window.addEventListener('pagehide', () => { if (leave) leave(); });
@@ -2071,16 +2114,27 @@ import { Cloud } from './auth.js';
     });
   }
 
+  if (Cloud.enabled && /[?&]oobCode=/.test(location.search)) {
+    // Volvió desde el enlace del correo: se completa el acceso y se recarga limpio
+    import('./cuenta.js').then(c => { if (!c.hayEnlace()) return; toast('Entrando con tu enlace…'); return c.terminarEnlace().then(u => { if (u) location.reload(); }); })
+      .catch(err => toast('No se pudo entrar con el enlace (' + ((err && (err.code || err.message)) || 'error') + '). Pide uno nuevo.'));
+  }
   renderAcct();
   if (!Cloud.enabled) {
     route();
   } else {
     // Las páginas públicas se pintan ya, con el catálogo estático, sin esperar a Firebase.
     // Las que dependen de tu sesión (favoritas, listas, publicar, vista previa) esperan a saber quién eres.
-    const needsUser = /^#\/(favoritas|listas|admin|vista)/.test(location.hash);
+    const needsUser = /^#\/(favoritas|listas|admin|vista|vincular)/.test(location.hash);
     if (needsUser) loading(); else route();
     Cloud.ready.then(ok => { if (!ok) { renderAcct(); if (needsUser) route(); } }); // Firebase no cargó (bloqueado, sin red): las páginas públicas siguen con el catálogo estático
-    let started = false;
+    let started = false, lastPull = 0;
+    // Si cambió algo desde la app/TV, al volver a esta pestaña se trae lo último de la nube
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState !== 'visible' || !user || saveTimer || !cloudReady || Date.now() - lastPull < 30000) return;
+      lastPull = Date.now();
+      try { data = normalize(await Cloud.load(user.uid)); if (/^#\/(favoritas|listas)/.test(location.hash)) route(); } catch { }
+    });
     Cloud.onUser(async raw => {
       const first = !started;
       startPresence(); // ya se conoce el estado de la sesión: evita crear una cuenta anónima encima de una de Google

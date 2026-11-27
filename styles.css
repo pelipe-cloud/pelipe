@@ -709,3 +709,10 @@ html.navidad .logo{padding-top:20px}
 @keyframes xmtw{0%,100%{opacity:1}50%{opacity:.35}}
 .xm-snow{position:absolute;pointer-events:none;z-index:3}
 @media(prefers-reduced-motion:reduce){.xm-bulb{animation:none}}
+
+/* Cuenta: entrar con correo y vincular app/TV */
+.mailf{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.mailf input{flex:1;min-width:200px;padding:11px 14px;border-radius:12px;border:1px solid var(--line,#2a2a38);background:var(--bg3,#1d1d28);color:inherit;font:inherit}
+#vc{max-width:190px;font-size:1.4rem;letter-spacing:.3em;text-align:center}
+.vinc h1{margin-bottom:8px}
+.dev{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;margin:8px 0;border-radius:12px;background:var(--bg3,#1d1d28)}
