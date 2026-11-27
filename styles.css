@@ -720,3 +720,14 @@ html.navidad .logo{padding-top:20px}
 /* Botones de Google y correo uno sobre otro (ocupan menos ancho en la cabecera) */
 .loginstack{display:inline-flex;flex-direction:column;gap:6px;align-items:stretch}
 .loginstack .gbtn,.loginstack .maillogin{justify-content:center;width:100%;padding-top:6px;padding-bottom:6px;font-size:.82rem}
+
+/* Celular: logo + botones de cuenta en la misma fila (los botones apilados quedan a la derecha del logo) */
+@media(max-width:720px){
+  .top{gap:8px}
+  .top .logo{font-size:1.75rem}
+  #acct{align-self:center}
+  .loginstack{min-width:108px}
+  .loginstack .gbtn,.loginstack .maillogin{font-size:.76rem;padding:6px 10px;gap:6px}
+  .loginstack .gbtn svg{width:15px;height:15px}
+  .loginstack .gbtn::after{content:"Entrar"}
+}
