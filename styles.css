@@ -731,3 +731,6 @@ html.navidad .logo{padding-top:20px}
   .loginstack .gbtn svg{width:15px;height:15px}
   .loginstack .gbtn::after{content:"Entrar"}
 }
+
+/* Sorpréndeme (dado): solo en celular/tablet táctil; se oculta en PC */
+@media (hover:hover) and (pointer:fine){.surprise{display:none!important}}

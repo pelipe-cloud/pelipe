@@ -30,6 +30,7 @@ export async function terminarEnlace() {
   if (!a.isSignInWithEmailLink(auth, location.href)) return null;
   let email = '';
   try { email = localStorage.getItem(KEY) || ''; } catch { }
+  if (!email) { try { email = (new URLSearchParams((location.hash.split('?')[1] || '')).get('e') || '').trim(); } catch { } }
   if (!email) email = (prompt('Escribe el correo al que llegó el enlace, para confirmar:') || '').trim();
   if (!email) throw new Error('Falta el correo');
   const cu = auth.currentUser;
@@ -41,7 +42,7 @@ export async function terminarEnlace() {
   }
   if (!r) r = await a.signInWithEmailLink(auth, email, location.href);
   try { localStorage.removeItem(KEY); } catch { }
-  history.replaceState(null, '', location.pathname + '#/');
+  history.replaceState(null, '', location.pathname + (location.hash.indexOf('#/vincular') === 0 ? location.hash.replace(/([?&])e=[^&]*&?/, '$1').replace(/[?&]$/, '') : '#/'));
   return r.user;
 }
 
