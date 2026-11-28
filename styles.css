@@ -734,3 +734,10 @@ html.navidad .logo{padding-top:20px}
 
 /* Sorpréndeme (dado): solo en celular/tablet táctil; se oculta en PC */
 @media (hover:hover) and (pointer:fine){.surprise{display:none!important}}
+
+/* Continuar viendo: ✕ para quitar */
+.scroller .cw{position:relative;flex:0 0 150px;scroll-snap-align:start}
+.scroller .cw .card{flex:none;width:100%}
+.cx{position:absolute;top:6px;right:6px;z-index:3;width:26px;height:26px;padding:0;border-radius:50%;border:1px solid #fff6;background:#000c;color:#fff;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cx:hover,.cx:focus-visible{background:var(--acc);border-color:var(--acc);outline:0}
+@media (max-width:900px){.scroller .cw{flex-basis:120px}}

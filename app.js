@@ -52,7 +52,7 @@ import { Cloud } from './auth.js';
     const ok = a => (Array.isArray(a) ? a : []).filter(m => m && m.titulo);
     const out = {
       favoritos: ok(d.favoritos),
-      progreso: ok(d.progreso).filter(m => m.d > 0 || m.sig).map(m => m.ep ? { ...m, ep: { t: Number(m.ep.t) || 1, e: Number(m.ep.e) || 1 } } : m).slice(0, 20),
+      progreso: ok(d.progreso).filter(m => m.d > 0 || m.sig || m.del).map(m => m.ep ? { ...m, ep: { t: Number(m.ep.t) || 1, e: Number(m.ep.e) || 1 } } : m).slice(0, 20),
       listas: Array.isArray(d.listas) ? d.listas.map(l => ({ id: String(l.id), nombre: String(l.nombre || 'Lista'), items: ok(l.items) })) : []
     };
     if (!out.listas.some(l => l.id === 'ver-despues')) out.listas.unshift(b.listas[0]);
@@ -110,13 +110,14 @@ import { Cloud } from './auth.js';
     persist();
   }
   // Progreso de reproducción ("Continuar viendo"): solo para videos propios (.mp4/.webm/HLS), donde se puede medir
-  const progOf = id => data.progreso.find(m => same(m.id, id));
+  const progOf = id => data.progreso.find(m => !m.del && same(m.id, id));
   function putProgress(p, t, d, ep) {
     const m = { ...mini(p), t: Math.floor(t), d: Math.floor(d), ts: Date.now() };
     if (ep) m.ep = { t: Number(ep.t) || 1, e: Number(ep.e) || 1 };
     data.progreso = [m, ...data.progreso.filter(x => !same(x.id, p.id))].slice(0, 20);
   }
-  const dropProgress = id => { data.progreso = data.progreso.filter(x => !same(x.id, id)); };
+  // Al quitar un título se deja una marca {del:1} para que la app/TV vinculada también lo quite (y no lo "reviva")
+  const dropProgress = id => { const t = data.progreso.filter(x => x.del && !same(x.id, id)).slice(0, 9); data.progreso = [{ id: String(id), del: 1, ts: Date.now() }, ...t, ...data.progreso.filter(x => !x.del && !same(x.id, id))].slice(0, 20); };
   function createList(nombre) {
     const l = { id: 'l' + Date.now().toString(36), nombre: nombre.trim().slice(0, 40), items: [] };
     data.listas.push(l);
@@ -134,7 +135,7 @@ import { Cloud } from './auth.js';
     document.getElementById('navadmin').hidden = !canPublish();
     if (!Cloud.enabled) { acct.innerHTML = ''; return; }
     acct.innerHTML = user
-      ? `${user.photoURL ? `<img class="avatar" src="${esc(user.photoURL)}" alt="" referrerpolicy="no-referrer">` : ''}<span class="uname">${esc((user.displayName || user.email || '').split(' ')[0])}</span><a class="btn ghost sm" href="#/vincular" title="Vincular la app o la TV a tu cuenta">Vincular app/TV</a><button class="btn ghost sm logout">Salir</button>`
+      ? `${user.photoURL ? `<img class="avatar" src="${esc(user.photoURL)}" alt="" referrerpolicy="no-referrer">` : ''}<span class="uname">${esc((user.displayName || user.email || '').split(' ')[0])}</span><a class="btn ghost sm" href="#/vincular" title="Vincular la App o la TV a tu cuenta">Vincular App/TV</a><button class="btn ghost sm logout">Salir</button>`
       : `<span class="loginstack"><button class="gbtn login" type="button" aria-label="Iniciar sesión con Google">${G_SVG}<span>Iniciar sesión con Google</span></button><button class="btn ghost sm maillogin" type="button">✉ Con correo</button></span>`;
   }
   function note() {
@@ -232,6 +233,8 @@ import { Cloud } from './auth.js';
   const tmdbImg = (u, w) => /^https:\/\/image\.tmdb\.org\/t\/p\/w\d+\//.test(u || '') ? u.replace(/\/t\/p\/w\d+\//, `/t/p/w${w}/`) : u;
   const cardLocal = p => `<a class="card" href="${p.href ? esc(p.href) : '#/ver/' + encodeURIComponent(p.id)}"><div class="poster">${httpsUrl(p.poster) ? `<img loading="lazy" src="${esc(tmdbImg(p.poster, SMALL ? 342 : 500))}" alt="${esc(p.titulo)}">` : ''}<i class="pl" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8.5 5.6v12.8a.8.8 0 0 0 1.2.7l10.2-6.4a.8.8 0 0 0 0-1.4L9.7 4.9a.8.8 0 0 0-1.2.7z"/></svg></i>${gensOf(p)[0] ? `<div class="badge">${esc(cap(gensOf(p)[0]))}</div>` : ''}${isSerie(p) ? `<div class="qs"><span class="badge q">${p.tag ? esc(p.tag) : 'SERIE'}</span>${p.tag ? '' : qBadges(p) || '<span class="badge q">HD</span>'}</div>` : qualsOf(p).length ? `<div class="qs">${qBadges(p)}</div>` : ''}${p.pct ? `<div class="prog"><i style="width:${Math.max(4, Math.min(100, Math.round(p.pct)))}%"></i></div>` : ''}${p.rank ? `<div class="rank">${p.rank}</div>` : ''}</div><b>${esc(p.titulo)}</b><span>${esc(p.anio || '')}${p.votos ? ` · ♥ ${p.votos}` : ''}</span></a>`;
   const rowLocal = (title, items, link) => items.length ? `<section class="row"><div class="row-h"><h2>${esc(title)}</h2>${link ? `<a href="${link}">Ver todo →</a>` : ''}</div><div class="scroller">${items.map(cardLocal).join('')}</div></section>` : '';
+  // Continuar viendo: cada póster lleva una ✕ para quitarlo de la lista
+  const rowCont = (title, items) => items.length ? `<section class="row" id="rcont"><div class="row-h"><h2>${esc(title)}</h2></div><div class="scroller">${items.map(p => `<div class="cw">${cardLocal(p)}<button class="cx" type="button" data-cx="${esc(p.id)}" aria-label="Quitar de Continuar viendo" title="Quitar de Continuar viendo">✕</button></div>`).join('')}</div></section>` : '';
   const gridLocal = items => `<div class="grid">${items.map(cardLocal).join('')}</div>`;
   const gridRm = (items, attrs) => `<div class="grid">${items.map(p => `<div class="rm-wrap">${cardLocal(p)}<button class="rm" data-id="${esc(p.id)}" ${attrs}>Quitar</button></div>`).join('')}</div>`;
   // En el inicio, el primer banner ya viene escrito en el HTML (lo genera build.mjs): no se tapa con el esqueleto de carga
@@ -733,7 +736,7 @@ import { Cloud } from './auth.js';
     const byId = id => list.find(p => same(p.id, id));
     // Continuar viendo: solo aparece si la persona dejó algo a medias (videos propios, donde se puede medir)
     const recientes = [...list, ...serAll].sort((a, b) => (b.creado || 0) - (a.creado || 0)).slice(0, 12); // películas y series mezcladas, lo último subido primero
-    const cont = data.progreso.map(m => {
+    const cont = data.progreso.filter(m => !m.del).map(m => {
       const s = m.ep ? serAll.find(y => same(y.id, m.id)) : null, x = s || byId(m.id);
       if (!x || !m.d) return null;
       return s ? { ...s, pct: m.sig ? 0 : m.t / m.d * 100, href: `#/ver/${encodeURIComponent(s.id)}?t=${m.ep.t}&e=${m.ep.e}`, tag: `T${m.ep.t} · E${m.ep.e}${m.sig ? ' · siguiente' : ''}` } : { ...x, pct: m.t / m.d * 100 };
@@ -759,7 +762,7 @@ import { Cloud } from './auth.js';
       </section>
       ${pedirHtml()}
       <div class="wrap" data-nosnippet>
-        ${rowLocal('Continuar viendo 👀', cont)}
+        ${rowCont('Continuar viendo 👀', cont)}
         ${rowLocal('Subidas recientes 🍿', recientes)}
         <div id="rk1"></div>
         <div id="rks"></div>
@@ -767,6 +770,13 @@ import { Cloud } from './auth.js';
         ${rowLocal('Te recomendamos… 👌', shuffle(list).slice(0, 10))}
       </div>`;
     initPedir([...list, ...serAll]);
+    app.querySelectorAll('.cx').forEach(b => b.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation();
+      dropProgress(b.dataset.cx); persist(true);
+      const w = b.closest('.cw'); if (w) w.remove();
+      const sec = document.getElementById('rcont'); if (sec && !sec.querySelector('.cw')) sec.remove();
+      toast('Quitado de «Continuar viendo».');
+    }));
     // Rankings por reacciones: se rellenan cuando llegan los conteos (en caché 30 min)
     // Se cuentan películas (100 más recientes) y series (50 más recientes) en la misma pasada
     const rankIn = [...list.slice(0, 100), ...serAll.slice(0, 50)];
@@ -841,7 +851,7 @@ import { Cloud } from './auth.js';
       (!p.hasta || (Number(x.anio) > 0 && Number(x.anio) <= Number(p.hasta))));
     if (orden === 'az') items.sort((a, b) => a.titulo.localeCompare(b.titulo, 'es'));
     else if (orden === 'anio') items.sort((a, b) => (Number(b.anio) || 0) - (Number(a.anio) || 0));
-    const titulo = p.q ? `Resultados para “${esc(p.q)}”` : p.genero ? esc(cap(p.genero)) : p.hasta ? `Clásicos (hasta ${esc(p.hasta)})` : SER ? 'Series' : 'Catálogo Películas';
+    const titulo = p.q ? `Resultados para “${esc(p.q)}”` : p.genero ? esc(cap(p.genero)) : p.hasta ? `Clásicos (hasta ${esc(p.hasta)})` : SER ? 'Cajón de Series' : 'Catálogo Películas';
     app.innerHTML = `<div class="wrap">
       <h1 style="margin-bottom:16px">${titulo}</h1>
       <form class="filters" id="f">
@@ -1945,13 +1955,13 @@ import { Cloud } from './auth.js';
   }
   const VMSG = { sesion: 'Inicia sesión primero.', codigo: 'El código tiene 6 dígitos.', noexiste: 'Ese código no existe. Revisa que sea el que muestra la app.', usado: 'Ese código ya fue usado. Genera uno nuevo en la app.', expirado: 'El código venció (dura 15 minutos). Genera uno nuevo en la app.', red: 'No hay conexión.' };
   async function vincularPage() {
-    document.title = 'Vincular app o TV — Pelipe.online';
+    document.title = 'Vincular App o TV — Pelipe.online';
     if (!user) {
-      app.innerHTML = `<div class="wrap vinc"><h1>Vincular app o TV</h1><div class="notice"><p>Para vincular tu app o TV con tu cuenta, primero inicia sesión.</p><p style="margin-top:10px"><button class="gbtn login" type="button" aria-label="Iniciar sesión con Google">${G_SVG}<span>Iniciar sesión con Google</span></button> <button class="btn ghost sm maillogin" type="button">✉ Con correo (enlace)</button></p></div></div>`;
+      app.innerHTML = `<div class="wrap vinc"><h1>Vincular App o TV</h1><div class="notice"><p>Para vincular tu App o TV con tu cuenta, primero inicia sesión.</p><p style="margin-top:10px"><button class="gbtn login" type="button" aria-label="Iniciar sesión con Google">${G_SVG}<span>Iniciar sesión con Google</span></button> <button class="btn ghost sm maillogin" type="button">✉ Con correo (enlace)</button></p></div></div>`;
       return;
     }
     const c0 = new URLSearchParams(location.hash.split('?')[1] || '').get('c') || '';
-    app.innerHTML = `<div class="wrap vinc"><h1>Vincular app o TV</h1><p class="muted">Abre la app de Pelipe, entra a <b>Cuenta</b> y escribe aquí el código de 6 dígitos que aparece. Así tu lista y tu "continuar viendo" quedan iguales en todos tus dispositivos.</p>
+    app.innerHTML = `<div class="wrap vinc"><h1>Vincular App o TV</h1><p class="muted">Abre la app de Pelipe, entra a <b>Cuenta</b> y escribe aquí el código de 6 dígitos que aparece. Así tu lista y tu "continuar viendo" quedan iguales en todos tus dispositivos.</p>${c0?'<p class="muted"><small>Vincula solo si fuiste tú quien pidió este enlace desde tu App o TV.</small></p>':''}
       <form id="vf" class="mailf"><input id="vc" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="off" value="${esc(c0.replace(/\D/g, '').slice(0, 6))}"><button class="btn" type="submit">Vincular</button></form><p id="vm" class="muted"></p>
       <h2 style="margin-top:26px">Dispositivos vinculados</h2><div id="vd" class="muted">Cargando…</div></div>`;
     const vm = document.getElementById('vm'), vd = document.getElementById('vd');
