@@ -2141,9 +2141,9 @@ import { Cloud } from './auth.js';
     let started = false, lastPull = 0;
     // Si cambió algo desde la app/TV, al volver a esta pestaña se trae lo último de la nube
     document.addEventListener('visibilitychange', async () => {
-      if (document.visibilityState !== 'visible' || !user || saveTimer || !cloudReady || Date.now() - lastPull < 30000) return;
+      if (document.visibilityState !== 'visible' || !user || saveTimer || !cloudReady || Date.now() - lastPull < 10000) return;
       lastPull = Date.now();
-      try { data = normalize(await Cloud.load(user.uid)); if (/^#\/(favoritas|listas)/.test(location.hash)) route(); } catch { }
+      try { data = normalize(await Cloud.load(user.uid)); if (/^#\/(favoritas|listas)/.test(location.hash) || /^(#\/?)?$/.test(location.hash)) route(); } catch { }
     });
     Cloud.onUser(async raw => {
       const first = !started;
